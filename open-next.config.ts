@@ -1,4 +1,3 @@
-@"
 import type { OpenNextConfig } from "@opennextjs/cloudflare";
 
 const config: OpenNextConfig = {
@@ -27,4 +26,3 @@ const config: OpenNextConfig = {
 };
 
 export default config;
-"@ | Set-Content open-next.config.ts
