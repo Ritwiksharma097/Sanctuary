@@ -9,8 +9,8 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        serif: ["var(--font-cormorant)", "Georgia", "serif"],
-        sans:  ["var(--font-lato)", "sans-serif"],
+        serif: ["'Cormorant Garamond'", "Georgia", "serif"],
+        sans:  ["'Lato'", "sans-serif"],
       },
     },
   },
