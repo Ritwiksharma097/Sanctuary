@@ -586,7 +586,8 @@ export default function TheFlamePage() {
             {[
               { href: "/", label: "Well" },
               { href: "/evil-eye", label: "Evil Eye" },
-              { href: "/mantras", label: "Mantras" },
+              { href: "/let-go", label: "Let Go" },
+              { href: "/the-cliff", label: "The Cliff" },
               { href: "/contact", label: "Contact" },
             ].map(link => (
               <a

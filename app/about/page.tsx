@@ -24,9 +24,9 @@ const PAGES = [
     desc: "Light a candle. Hold your wish. Look at the flame and do not look away.",
   },
   {
-    href: "/mantras",
-    label: "Sacred Phrases",
-    desc: "Words from eight traditions, all pointing at the same human thing.",
+    href: "/the-cliff",
+    label: "The Cliff",
+    desc: "Stand at the edge. Say everything. The valley will carry it.",
   },
 ];
 
