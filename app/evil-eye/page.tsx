@@ -421,7 +421,8 @@ export default function EvilEyePage() {
           {[
             { href: "/", label: "Well" },
             { href: "/the-flame", label: "The Flame" },
-            { href: "/mantras", label: "Mantras" },
+            { href: "/let-go", label: "Let Go" },
+            { href: "/the-cliff", label: "The Cliff" },
             { href: "/contact", label: "Contact" },
           ].map(link => (
             <a

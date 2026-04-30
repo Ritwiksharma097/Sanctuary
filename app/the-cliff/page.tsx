@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import StarField from "@/components/StarField";
 import { useMascotReact } from "@/components/Mascot";
 
@@ -11,9 +11,8 @@ const ECHOES = [
   "Every word. Every bit of it.",
   "You were allowed to say that.",
   "The valley held it.",
-  "It echoed back and then it settled.",
-  "You let it out. That matters.",
   "The sky is big enough for all of it.",
+  "You let it out. That matters.",
 ];
 
 const CLOSING = [
@@ -23,6 +22,18 @@ const CLOSING = [
   "There is no right way to grieve. There is only your way. And you just did it.",
 ];
 
+interface WordParticle {
+  id: number;
+  word: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  opacity: number;
+  size: number;
+  rotation: number;
+}
+
 export default function TheCliffPage() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [shout, setShout] = useState("");
@@ -30,29 +41,50 @@ export default function TheCliffPage() {
   const [closing, setClosing] = useState("");
   const [echoVisible, setEchoVisible] = useState(false);
   const [windProgress, setWindProgress] = useState(0);
+  const [particles, setParticles] = useState<WordParticle[]>([]);
+  const [armsRaised, setArmsRaised] = useState(false);
+  const animFrame = useRef<number | null>(null);
   const mascotReact = useMascotReact();
 
   function startShout() {
     if (!shout.trim()) return;
     setPhase("shouting");
+    setArmsRaised(true);
     mascotReact("sad", "...");
 
-    // Wind carries words outward
+    // Scatter words as particles
+    const words = shout.trim().split(/\s+/).slice(0, 12);
+    const newParticles: WordParticle[] = words.map((word, i) => ({
+      id: i,
+      word,
+      x: 42 + (Math.random() - 0.3) * 20,  // start near figure on cliff
+      y: 62 + (Math.random() - 0.5) * 10,
+      vx: 0.8 + Math.random() * 1.2,
+      vy: -(0.1 + Math.random() * 0.4),
+      opacity: 1,
+      size: 10 + Math.random() * 6,
+      rotation: (Math.random() - 0.5) * 20,
+    }));
+    setParticles(newParticles);
+
+    // Wind progress for cliff scene
     let wind = 0;
     const windInterval = setInterval(() => {
-      wind += 0.02;
+      wind += 0.015;
       setWindProgress(Math.min(wind, 1));
       if (wind >= 1) {
         clearInterval(windInterval);
         setTimeout(() => {
+          setArmsRaised(false);
           setEcho(pick(ECHOES));
           setClosing(pick(CLOSING));
+          setParticles([]);
           setPhase("echo");
           setTimeout(() => {
             setEchoVisible(true);
-            setTimeout(() => setPhase("still"), 1200);
-          }, 400);
-        }, 600);
+            setTimeout(() => setPhase("still"), 1000);
+          }, 300);
+        }, 500);
       }
     }, 40);
   }
@@ -64,14 +96,17 @@ export default function TheCliffPage() {
     setClosing("");
     setEchoVisible(false);
     setWindProgress(0);
+    setParticles([]);
+    setArmsRaised(false);
+    if (animFrame.current) cancelAnimationFrame(animFrame.current);
   }
 
   return (
     <main style={{ minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       <StarField />
 
-      {/* Cliff scene background */}
-      <CliffScene phase={phase} windProgress={windProgress} shout={shout} />
+      {/* Full-screen cliff scene */}
+      <CliffScene phase={phase} windProgress={windProgress} armsRaised={armsRaised} particles={particles} />
 
       <a href="/" style={{
         position: "fixed", top: "20px", left: "20px",
@@ -83,7 +118,7 @@ export default function TheCliffPage() {
         onMouseEnter={e => (e.currentTarget.style.color = "var(--gold-light)")}
         onMouseLeave={e => (e.currentTarget.style.color = "rgba(176,160,144,0.6)")}
       >
-        the well
+        ← the well
       </a>
 
       <div style={{
@@ -93,7 +128,7 @@ export default function TheCliffPage() {
         justifyContent: "flex-end",
       }}>
 
-        {/* PHASE: idle / typing */}
+        {/* Idle / typing */}
         {(phase === "idle" || phase === "typing") && (
           <div style={{
             width: "100%", maxWidth: "520px",
@@ -102,25 +137,22 @@ export default function TheCliffPage() {
           }}>
             <div style={{ textAlign: "center", marginBottom: "8px" }}>
               <p style={{
-                fontFamily: "var(--font-serif)", fontSize: "17px",
-                fontStyle: "italic", color: "rgba(176,160,144,0.8)",
+                fontFamily: "var(--font-serif)", fontSize: "18px",
+                fontStyle: "italic", color: "rgba(176,160,144,0.85)",
                 lineHeight: 1.7,
               }}>
-                Stand at the edge. Say everything. The valley will carry it.
+                Stand at the edge. Say everything.<br/>The valley will carry it.
               </p>
             </div>
 
             <textarea
               placeholder="Shout it all out. No one will hear except the wind..."
               value={shout}
-              onChange={e => {
-                setShout(e.target.value);
-                setPhase(e.target.value ? "typing" : "idle");
-              }}
+              onChange={e => { setShout(e.target.value); setPhase(e.target.value ? "typing" : "idle"); }}
               rows={5}
               style={{
                 width: "100%",
-                background: "rgba(13,13,26,0.7)",
+                background: "rgba(13,13,26,0.75)",
                 border: "1px solid rgba(201,168,76,0.2)",
                 borderRadius: "8px",
                 color: "var(--cream)",
@@ -131,18 +163,18 @@ export default function TheCliffPage() {
                 outline: "none",
                 resize: "none",
                 caretColor: "var(--gold)",
-                backdropFilter: "blur(4px)",
+                backdropFilter: "blur(6px)",
               }}
               onFocus={e => (e.target.style.borderColor = "rgba(201,168,76,0.4)")}
               onBlur={e => (e.target.style.borderColor = "rgba(201,168,76,0.2)")}
             />
 
-            <div style={{ display: "flex", justifyContent: "center", gap: "16px", alignItems: "center" }}>
+            <div style={{ display: "flex", justifyContent: "center" }}>
               <button
                 onClick={startShout}
                 disabled={!shout.trim()}
                 style={{
-                  padding: "14px 44px", borderRadius: "999px",
+                  padding: "14px 48px", borderRadius: "999px",
                   background: shout.trim() ? "var(--gold)" : "rgba(201,168,76,0.3)",
                   color: shout.trim() ? "var(--night)" : "var(--stone)",
                   fontFamily: "var(--font-serif)", fontSize: "17px",
@@ -154,50 +186,26 @@ export default function TheCliffPage() {
               </button>
             </div>
 
-            {/* Crisis line - quiet, always present */}
             <p style={{
               fontFamily: "var(--font-lato)", fontSize: "10px",
               color: "rgba(176,160,144,0.4)", textAlign: "center",
-              letterSpacing: "0.1em", lineHeight: 1.7, marginTop: "8px",
+              letterSpacing: "0.1em", lineHeight: 1.7,
             }}>
-              If you are carrying something heavier than grief right now,
-              you do not have to carry it alone.{" "}
-              <a
-                href="https://findahelpline.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "rgba(201,168,76,0.5)", textDecoration: "underline" }}
-              >
-                Find support near you.
+              Carrying something heavier than words?{" "}
+              <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer"
+                style={{ color: "rgba(201,168,76,0.5)", textDecoration: "underline" }}>
+                You are not alone.
               </a>
             </p>
           </div>
         )}
 
-        {/* PHASE: shouting - words fly into distance */}
+        {/* Shouting — just let the cliff scene do the work */}
         {phase === "shouting" && (
-          <div style={{
-            width: "100%", maxWidth: "520px", textAlign: "center",
-            position: "relative", height: "120px",
-          }}>
-            <p style={{
-              fontFamily: "var(--font-serif)",
-              fontSize: `${Math.max(8, 20 - windProgress * 14)}px`,
-              color: `rgba(245,239,224,${1 - windProgress * 0.9})`,
-              transform: `translateX(${windProgress * 200}px) translateY(${-windProgress * 30}px)`,
-              opacity: 1 - windProgress,
-              transition: "all 0.04s linear",
-              position: "absolute", left: "50%",
-              whiteSpace: "nowrap", overflow: "hidden",
-              maxWidth: "400px",
-              textOverflow: "ellipsis",
-            }}>
-              {shout.slice(0, 60)}{shout.length > 60 ? "..." : ""}
-            </p>
-          </div>
+          <div style={{ height: "80px" }} />
         )}
 
-        {/* PHASE: echo + still */}
+        {/* Echo + still */}
         {(phase === "echo" || phase === "still") && (
           <div style={{
             width: "100%", maxWidth: "480px",
@@ -205,15 +213,12 @@ export default function TheCliffPage() {
             gap: "24px", textAlign: "center",
             opacity: echoVisible ? 1 : 0,
             transform: echoVisible ? "translateY(0)" : "translateY(12px)",
-            transition: "opacity 0.8s ease, transform 0.8s ease",
+            transition: "opacity 0.9s ease, transform 0.9s ease",
           }}>
-            <div style={{
-              width: "60px", height: "1px",
-              background: "linear-gradient(90deg, transparent, var(--gold), transparent)",
-            }} />
+            <div style={{ width: "60px", height: "1px", background: "linear-gradient(90deg, transparent, var(--gold), transparent)" }} />
 
             <p style={{
-              fontFamily: "var(--font-serif)", fontSize: "24px",
+              fontFamily: "var(--font-serif)", fontSize: "26px",
               fontStyle: "italic", color: "var(--stone-light)", lineHeight: 1.5,
               letterSpacing: "0.02em",
             }}>
@@ -222,67 +227,33 @@ export default function TheCliffPage() {
 
             <p style={{
               fontFamily: "var(--font-serif)", fontSize: "17px",
-              fontStyle: "italic", color: "rgba(176,160,144,0.7)", lineHeight: 1.8,
+              fontStyle: "italic", color: "rgba(176,160,144,0.75)", lineHeight: 1.8,
               maxWidth: "380px",
             }}>
               {closing}
             </p>
 
-            <div style={{
-              width: "60px", height: "1px",
-              background: "linear-gradient(90deg, transparent, var(--gold), transparent)",
-            }} />
+            <div style={{ width: "60px", height: "1px", background: "linear-gradient(90deg, transparent, var(--gold), transparent)" }} />
 
             <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", justifyContent: "center" }}>
-              <button
-                onClick={reset}
-                style={{
-                  fontFamily: "var(--font-lato)", fontSize: "11px",
-                  letterSpacing: "0.3em", textTransform: "uppercase",
-                  color: "var(--stone)", background: "none", border: "none",
-                  borderBottom: "1px solid rgba(176,160,144,0.3)",
-                  cursor: "pointer", paddingBottom: "2px",
-                }}
-              >
-                shout again
-              </button>
+              <button onClick={reset} style={{
+                fontFamily: "var(--font-lato)", fontSize: "11px",
+                letterSpacing: "0.3em", textTransform: "uppercase",
+                color: "var(--stone)", background: "none", border: "none",
+                borderBottom: "1px solid rgba(176,160,144,0.3)",
+                cursor: "pointer", paddingBottom: "2px",
+              }}>shout again</button>
               <a href="/" style={{
                 fontFamily: "var(--font-lato)", fontSize: "11px",
                 letterSpacing: "0.3em", textTransform: "uppercase",
                 color: "var(--stone)", textDecoration: "none",
                 borderBottom: "1px solid rgba(176,160,144,0.3)",
-                paddingBottom: "2px", transition: "color 0.2s",
+                paddingBottom: "2px",
               }}
                 onMouseEnter={e => (e.currentTarget.style.color = "var(--gold-light)")}
                 onMouseLeave={e => (e.currentTarget.style.color = "var(--stone)")}
-              >
-                make a wish
-              </a>
-              <a href="/the-bench" style={{
-                fontFamily: "var(--font-lato)", fontSize: "11px",
-                letterSpacing: "0.3em", textTransform: "uppercase",
-                color: "var(--stone)", textDecoration: "none",
-                borderBottom: "1px solid rgba(176,160,144,0.3)",
-                paddingBottom: "2px", transition: "color 0.2s",
-              }}
-                onMouseEnter={e => (e.currentTarget.style.color = "var(--gold-light)")}
-                onMouseLeave={e => (e.currentTarget.style.color = "var(--stone)")}
-              >
-                sit quietly
-              </a>
+              >make a wish</a>
             </div>
-
-            <p style={{
-              fontFamily: "var(--font-lato)", fontSize: "10px",
-              color: "rgba(176,160,144,0.35)", letterSpacing: "0.1em",
-              lineHeight: 1.7,
-            }}>
-              If you need someone to talk to,{" "}
-              <a href="https://findahelpline.com" target="_blank" rel="noopener noreferrer"
-                style={{ color: "rgba(201,168,76,0.4)", textDecoration: "underline" }}>
-                you are not alone.
-              </a>
-            </p>
           </div>
         )}
       </div>
@@ -290,107 +261,119 @@ export default function TheCliffPage() {
   );
 }
 
-// ─── Cliff background scene ───────────────────────────────────────────────────
-
-function CliffScene({ phase, windProgress, shout }: {
-  phase: Phase; windProgress: number; shout: string;
+/* ── Cliff SVG scene ── */
+function CliffScene({ phase, windProgress, armsRaised, particles }: {
+  phase: Phase; windProgress: number; armsRaised: boolean; particles: WordParticle[];
 }) {
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none",
-    }}>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" }}>
       <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice"
         style={{ width: "100%", height: "100%" }}
         xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <radialGradient id="skyGrad" cx="50%" cy="0%" r="80%">
-            <stop offset="0%" stopColor="#1a1a3a" />
+          <radialGradient id="skyGrad" cx="50%" cy="0%" r="90%">
+            <stop offset="0%" stopColor="#1c1c3e" />
             <stop offset="100%" stopColor="#0d0d1a" />
           </radialGradient>
-          <radialGradient id="moonGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#fff9e6" stopOpacity="0.15" />
+          <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="rgba(255,249,230,0.18)" />
             <stop offset="100%" stopColor="transparent" />
           </radialGradient>
+          <linearGradient id="valleyMist" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="rgba(176,160,144,0.04)" />
+            <stop offset="100%" stopColor="rgba(176,160,144,0.0)" />
+          </linearGradient>
         </defs>
 
         {/* Sky */}
         <rect width="800" height="600" fill="url(#skyGrad)" />
 
-        {/* Moon */}
-        <circle cx="650" cy="80" r="40" fill="url(#moonGlow)" />
-        <circle cx="650" cy="80" r="22" fill="#f5efe0" opacity="0.9" />
+        {/* Stars — static a few */}
+        {[
+          [120,60],[200,30],[340,80],[500,45],[620,70],[700,30],[750,90],
+          [60,120],[400,20],[550,110],[150,140],[680,50],
+        ].map(([x,y],i) => (
+          <circle key={i} cx={x} cy={y} r={0.8 + (i%3)*0.4} fill="white" opacity={0.4 + (i%3)*0.2}/>
+        ))}
 
-        {/* Distant mountains */}
-        <path d="M0 400 L150 250 L300 350 L450 200 L600 300 L750 220 L800 280 L800 600 L0 600 Z"
+        {/* Moon */}
+        <circle cx="660" cy="75" r="55" fill="url(#moonHalo)" />
+        <circle cx="660" cy="75" r="26" fill="#f5efe0" opacity="0.92" />
+        <circle cx="653" cy="68" r="8" fill="rgba(220,200,160,0.3)" />
+
+        {/* Far mountains */}
+        <path d="M0 420 L80 310 L160 380 L260 270 L360 350 L460 240 L560 320 L660 230 L760 300 L800 260 L800 600 L0 600 Z"
+          fill="#111125" opacity="0.95" />
+        {/* Mid mountains */}
+        <path d="M0 460 L120 370 L200 420 L310 340 L400 400 L500 330 L600 390 L700 350 L800 380 L800 600 L0 600 Z"
           fill="#13132b" opacity="0.9" />
 
-        {/* Valley mist */}
-        <ellipse cx="400" cy="500" rx="500" ry="100"
-          fill="rgba(176,160,144,0.05)" />
+        {/* Valley floor mist */}
+        <ellipse cx="400" cy="520" rx="500" ry="80" fill="url(#valleyMist)" />
 
-        {/* Cliff edge */}
-        <path d="M0 480 Q100 470 200 475 Q250 477 300 480 L300 600 L0 600 Z"
+        {/* Cliff platform the figure stands on */}
+        <path d="M0 500 Q60 494 120 497 Q160 498 195 500 L195 600 L0 600 Z"
           fill="#1a1a3a" />
-        <path d="M300 480 Q350 478 380 490 Q390 500 400 600 L300 600 Z"
+        <path d="M195 500 Q210 496 220 508 Q224 515 226 600 L195 600 Z"
           fill="#13132b" />
+        {/* Cliff edge highlight */}
+        <path d="M0 500 Q100 496 195 499" fill="none" stroke="rgba(176,160,144,0.15)" strokeWidth="1.5"/>
 
-        {/* Cliff face */}
-        <path d="M0 490 Q150 485 300 488 L300 600 L0 600 Z"
-          fill="rgba(30,30,60,0.8)" />
+        {/* Wind lines during shout */}
+        {phase === "shouting" && [0,1,2,3,4].map(i => (
+          <line key={i}
+            x1={220 + windProgress * 60}
+            y1={400 + i * 22 - windProgress * 20}
+            x2={280 + windProgress * 180 + i * 15}
+            y2={395 + i * 22 - windProgress * 40}
+            stroke={`rgba(201,168,76,${Math.max(0, 0.35 - windProgress * 0.3)})`}
+            strokeWidth={1.5 - i * 0.2}
+            strokeLinecap="round"
+            style={{ animation: `windLine ${0.8 + i * 0.15}s ease-out ${i * 0.08}s forwards` }}
+          />
+        ))}
 
-        {/* Words flying in wind */}
-        {phase === "shouting" && (
-          <text
-            x={400 + windProgress * 300}
-            y={400 - windProgress * 100}
-            fontSize={Math.max(6, 16 - windProgress * 12)}
-            fill={`rgba(245,239,224,${Math.max(0, 1 - windProgress * 1.2)})`}
+        {/* Word particles flying away */}
+        {particles.map(p => (
+          <text key={p.id}
+            fontSize={p.size}
+            fill={`rgba(245,239,224,${p.opacity})`}
             fontFamily="Georgia, serif"
             fontStyle="italic"
+            textAnchor="middle"
+            style={{
+              animation: `wordsCarry ${1.2 + Math.random() * 0.4}s ease-out forwards`,
+              animationDelay: `${Math.random() * 0.3}s`,
+            }}
+            x={`${p.x}%`}
+            y={`${p.y}%`}
+            transform={`rotate(${p.rotation})`}
           >
-            {shout.slice(0, 40)}
+            {p.word}
           </text>
-        )}
+        ))}
 
-        {/* Wind lines */}
-        {phase === "shouting" && (
-          <>
-            {[0, 1, 2, 3].map(i => (
-              <line
-                key={i}
-                x1={300 + windProgress * 100}
-                y1={380 + i * 20}
-                x2={400 + windProgress * 200 + i * 20}
-                y2={370 + i * 20 - windProgress * 30}
-                stroke={`rgba(201,168,76,${0.3 - windProgress * 0.2})`}
-                strokeWidth="1"
-                strokeLinecap="round"
-              />
-            ))}
-          </>
-        )}
-
-        {/* Small silhouette standing at cliff edge */}
-        <g transform="translate(290, 450)">
-          {/* Body */}
-          <line x1="0" y1="0" x2="0" y2="25" stroke="rgba(176,160,144,0.8)" strokeWidth="2.5" strokeLinecap="round" />
+        {/* Stick figure on cliff edge */}
+        <g transform="translate(185, 444)">
           {/* Head */}
-          <circle cx="0" cy="-6" r="5" fill="rgba(176,160,144,0.8)" />
-          {/* Arms raised if shouting */}
-          {(phase === "shouting") ? (
+          <circle cx="0" cy="-8" r="6" fill="rgba(176,160,144,0.85)" />
+          {/* Body */}
+          <line x1="0" y1="-2" x2="0" y2="22" stroke="rgba(176,160,144,0.85)" strokeWidth="2.5" strokeLinecap="round" />
+          {/* Arms */}
+          {armsRaised ? (
             <>
-              <line x1="0" y1="8" x2="-10" y2="-2" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
-              <line x1="0" y1="8" x2="10" y2="-2" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
+              <line x1="0" y1="6" x2="-14" y2="-6" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="0" y1="6" x2="14" y2="-6" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
             </>
           ) : (
             <>
-              <line x1="0" y1="8" x2="-8" y2="16" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
-              <line x1="0" y1="8" x2="8" y2="16" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
+              <line x1="0" y1="6" x2="-10" y2="16" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
+              <line x1="0" y1="6" x2="10" y2="16" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
             </>
           )}
           {/* Legs */}
-          <line x1="0" y1="25" x2="-6" y2="36" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
-          <line x1="0" y1="25" x2="6" y2="36" stroke="rgba(176,160,144,0.8)" strokeWidth="2" strokeLinecap="round" />
+          <line x1="0" y1="22" x2="-7" y2="36" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
+          <line x1="0" y1="22" x2="7" y2="36" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
         </g>
       </svg>
     </div>
