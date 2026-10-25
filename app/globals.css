@@ -108,6 +108,17 @@ html, body {
 @keyframes flicker1 { 0%{transform:scaleY(0.9) translateY(0)} 50%{transform:scaleY(1.2) translateY(-4px)} 100%{transform:scaleY(0.95) translateY(2px)} }
 @keyframes flicker2 { 0%{transform:scaleY(1.1) translateY(-1px)} 50%{transform:scaleY(0.85) translateY(2px)} 100%{transform:scaleY(1.1) translateY(-2px)} }
 
+/* ── Let Go: the match ────────────────────────────── */
+@keyframes matchNudge {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-4deg) translateY(-2px); }
+}
+
+@keyframes sparkFly {
+  from { transform: translate(0, 0); opacity: 1; }
+  to   { transform: translate(var(--vx), calc(var(--vy) + 30px)); opacity: 0; }
+}
+
 /* ── Smoke from a blown-out candle ─────────────────── */
 @keyframes smokeRise {
   0%   { opacity: 0;    transform: translateY(8px) scaleX(0.6); }

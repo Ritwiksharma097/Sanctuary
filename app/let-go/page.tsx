@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import StarField from "@/components/StarField";
 import BurningLetter from "@/components/BurningLetter";
 import ToiletFlush from "@/components/ToiletFlush";
+import MatchStrike from "@/components/MatchStrike";
 import { useMascotReact } from "@/components/Mascot";
 
 type Phase = "write" | "burning" | "toilet" | "done";
@@ -13,6 +14,8 @@ export default function LetGoPage() {
   const [letter, setLetter] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [burnProgress, setBurnProgress] = useState(0);
+  const [matchLit, setMatchLit] = useState(false);
+  const [ignited, setIgnited] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const mascotReact = useMascotReact();
 
@@ -27,7 +30,13 @@ export default function LetGoPage() {
   function startBurn() {
     if (!letter.trim()) return;
     setBurnProgress(0);
+    setMatchLit(false);
+    setIgnited(false);
     setPhase("burning");
+  }
+
+  function lit() {
+    setIgnited(true);
     mascotReact("sad", "...");
   }
 
@@ -181,7 +190,7 @@ export default function LetGoPage() {
                 letterSpacing: "0.05em", transition: "background 0.2s",
               }}
             >
-              Burn it
+              Done writing
             </button>
           </div>
         )}
@@ -193,12 +202,40 @@ export default function LetGoPage() {
             display: "flex", flexDirection: "column", alignItems: "center", gap: "32px",
             animation: "fadeInUp 0.4s ease forwards",
           }}>
-            <BurningLetter letter={letter} name={name} photo={photo} onProgress={setBurnProgress} onDone={finishBurn} />
+            {!ignited && (
+              <p style={{
+                fontFamily: "var(--font-serif)", fontSize: "18px", fontStyle: "italic",
+                color: "var(--stone-light)", textAlign: "center", lineHeight: 1.7,
+                marginBottom: "-8px", position: "relative", zIndex: 2,
+              }}>
+                Read it once more. Change anything you need to.<br />
+                When you are ready, light the match.
+              </p>
+            )}
+            <BurningLetter letter={letter} name={name} photo={photo}
+              armed={matchLit && !ignited} onIgnite={lit}
+              onProgress={setBurnProgress} onDone={finishBurn} />
+
+            <div style={{
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "32px", flexWrap: "wrap",
+              opacity: ignited ? 0 : 1, transition: "opacity 0.8s ease", pointerEvents: ignited ? "none" : "auto",
+            }}>
+              {!matchLit && (
+                <button onClick={() => setPhase("write")} style={{
+                  fontFamily: "var(--font-lato)", fontSize: "11px",
+                  letterSpacing: "0.3em", textTransform: "uppercase",
+                  color: "var(--stone-light)", background: "none", border: "none",
+                  borderBottom: "1px solid rgba(176,160,144,0.3)",
+                  cursor: "pointer", paddingBottom: "2px",
+                }}>← edit letter</button>
+              )}
+              <MatchStrike spent={ignited} onLit={() => setMatchLit(true)} />
+            </div>
             <p style={{
               fontFamily: "var(--font-serif)", fontSize: "20px",
               fontStyle: "italic", color: "var(--stone-light)",
               textAlign: "center", lineHeight: 1.7,
-              opacity: burnProgress > 0.3 ? 1 : 0,
+              opacity: ignited && burnProgress > 0.3 ? 1 : 0,
               transition: "opacity 0.8s ease",
             }}>
               {burnProgress < 0.6 ? "Everything you held. It is leaving now." : "Almost gone."}

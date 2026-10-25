@@ -10,6 +10,7 @@ they can be tweaked and re-rendered rather than edited by hand.
 | `sky.py`    | `sky.webp`                                  | StarField (every page)     |
 | `candle.py` | `candle-<colour>.webp`                      | The Flame                  |
 | `cliff.py`  | `cliff.webp`, `cliff-figure.webp` (sprite sheet via `export-cliff-fig.sh`) | The Cliff |
+| `match.py`  | `matchbox.webp`, `match.webp`               | Let Go (MatchStrike)       |
 | `toilet.py` | `toilet.webp`, `toilet-lever[-down].webp`, `scrap.webp` | Let Go (ToiletFlush) |
 
 ## Rendering
