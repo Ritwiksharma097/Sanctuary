@@ -12,12 +12,13 @@ const MOOD_COLORS: Record<Mood, string> = {
   thinking:  "rgba(201,168,76,0.1)",
 };
 
+// Pluto is a dog: no words, just dog noises that match the mood
 const MOOD_MESSAGES: Record<Mood, string[]> = {
-  idle:      ["Just here with you.", "Take your time.", "Whenever you're ready."],
-  listening: ["I'm listening.", "Go on.", "I hear you."],
-  happy:     ["That warms my heart.", "Yes, yes!", "I feel it too."],
-  sad:       ["I'm right here.", "You don't have to carry it alone.", "I'm not going anywhere."],
-  thinking:  ["Mm.", "...", "I'm with you."],
+  idle:      ["*tail wag*", "*soft snuffle*", "*rests head on your knee*"],
+  listening: ["*ears perk up*", "*head tilt*", "*boop*"],
+  happy:     ["Woof woof! ♡", "*zoomies*", "Arf! *wiggles*"],
+  sad:       ["*soft whimper*", "*nuzzles closer*", "*licks your hand*"],
+  thinking:  ["Mrrf?", "*sniff sniff*", "*head tilt*"],
 };
 
 function getMoodFromText(text: string): Mood {
@@ -39,7 +40,7 @@ export default function CompanionPage() {
   const inputRef     = useRef<HTMLTextAreaElement>(null);
   const [text, setText]         = useState("");
   const [mood, setMood]         = useState<Mood>("idle");
-  const [message, setMessage]   = useState("Just here with you.");
+  const [message, setMessage]   = useState(MOOD_MESSAGES.idle[0]);
   const [sent, setSent]         = useState(false);
   const [loaded, setLoaded]     = useState(false);
   const [error, setError]       = useState(false);
@@ -235,11 +236,11 @@ export default function CompanionPage() {
           you don't have to be alone
         </p>
         <h1 className="text-5xl font-light mb-3" style={{ fontFamily: "var(--font-serif)", color: "var(--cream)" }}>
-          The Companion
+          Pluto
         </h1>
         <p className="text-base italic max-w-sm mx-auto leading-relaxed" style={{ fontFamily: "var(--font-serif)", color: "var(--stone-light)" }}>
-          Say anything. They won't reply in words.<br />
-          But they will hear you.
+          Say anything. He won't reply in words.<br />
+          But he will hear you.
         </p>
       </div>
 
@@ -259,17 +260,17 @@ export default function CompanionPage() {
             <div className="absolute inset-0 flex items-center justify-center">
               <div style={{ textAlign: "center", color: "var(--stone-light)", fontFamily: "var(--font-serif)", fontStyle: "italic" }}>
                 <div style={{ fontSize: "48px", marginBottom: "12px", animation: "pulseGlow 2s ease-in-out infinite" }}>🐕</div>
-                <p style={{ fontSize: "14px" }}>Coming to you…</p>
+                <p style={{ fontSize: "14px" }}>Pluto is coming…</p>
               </div>
             </div>
           )}
 
-          {/* Error fallback: 2D dog emoji companion */}
+          {/* Error fallback: 2D dog emoji Pluto */}
           {error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ fontSize: "80px", animation: "sealAppear 0.6s ease forwards" }}>🐕</div>
               <p style={{ color: "var(--stone-light)", fontFamily: "var(--font-serif)", fontStyle: "italic", fontSize: "14px" }}>
-                Still here with you.
+                *happy panting*
               </p>
             </div>
           )}
@@ -321,7 +322,7 @@ export default function CompanionPage() {
             value={text}
             onChange={e => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Talk to them. Anything at all."
+            placeholder="Talk to Pluto. Anything at all."
             rows={3}
             maxLength={500}
             style={{
@@ -382,7 +383,7 @@ export default function CompanionPage() {
           }}
         >
           Nothing you write here is stored or seen by anyone.<br />
-          This is just between you and them.
+          This is just between you and Pluto.
         </p>
       </div>
 
