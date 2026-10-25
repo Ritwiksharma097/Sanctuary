@@ -6,7 +6,7 @@ import ToiletFlush from "@/components/ToiletFlush";
 import MatchStrike from "@/components/MatchStrike";
 import { useMascotReact } from "@/components/Mascot";
 
-type Phase = "write" | "burning" | "toilet" | "done";
+type Phase = "write" | "burning" | "choose" | "toilet" | "done";
 
 export default function LetGoPage() {
   const [phase, setPhase] = useState<Phase>("write");
@@ -41,9 +41,10 @@ export default function LetGoPage() {
   }
 
   function finishBurn() {
-    setTimeout(() => setPhase("toilet"), 300);
+    setTimeout(() => setPhase("choose"), 300);
   }
 
+  // Either ending (flushed, or simply let go) leads to the closing screen
   function flushed() {
     setTimeout(() => { setPhase("done"); mascotReact("hopeful", "♡"); }, 400);
   }
@@ -239,6 +240,38 @@ export default function LetGoPage() {
               transition: "opacity 0.8s ease",
             }}>
               {burnProgress < 0.6 ? "Everything you held. It is leaving now." : "Almost gone."}
+            </p>
+          </div>
+        )}
+
+        {/* PHASE: choose what happens to the ashes */}
+        {phase === "choose" && (
+          <div style={{
+            display: "flex", flexDirection: "column", alignItems: "center", gap: "22px",
+            textAlign: "center", maxWidth: "420px", marginTop: "12vh",
+            animation: "fadeInUp 0.7s ease forwards",
+          }}>
+            <p style={{ fontFamily: "var(--font-serif)", fontSize: "24px", fontStyle: "italic", color: "var(--cream)", lineHeight: 1.5 }}>
+              What should happen to the ashes?
+            </p>
+            <button onClick={flushed} style={{
+              padding: "14px 34px", borderRadius: "999px", width: "100%", maxWidth: "320px",
+              background: "var(--gold)", color: "var(--night)",
+              fontFamily: "var(--font-serif)", fontSize: "17px",
+              border: "none", cursor: "pointer", letterSpacing: "0.04em",
+            }}>
+              Let it be gone
+            </button>
+            <button onClick={() => setPhase("toilet")} style={{
+              padding: "13px 34px", borderRadius: "999px", width: "100%", maxWidth: "320px",
+              background: "transparent", color: "var(--gold-light)",
+              fontFamily: "var(--font-serif)", fontSize: "17px",
+              border: "1px solid rgba(201,168,76,0.45)", cursor: "pointer", letterSpacing: "0.04em",
+            }}>
+              Flush it and forget it
+            </button>
+            <p style={{ fontFamily: "var(--font-lato)", fontSize: "11px", color: "var(--stone)", letterSpacing: "0.1em", lineHeight: 1.7 }}>
+              Some things deserve a gentle goodbye. Some deserve a flush.
             </p>
           </div>
         )}
