@@ -2,9 +2,10 @@
 import { useState, useRef } from "react";
 import StarField from "@/components/StarField";
 import BurningLetter from "@/components/BurningLetter";
+import ToiletFlush from "@/components/ToiletFlush";
 import { useMascotReact } from "@/components/Mascot";
 
-type Phase = "write" | "burning" | "flushing" | "done";
+type Phase = "write" | "burning" | "toilet" | "done";
 
 export default function LetGoPage() {
   const [phase, setPhase] = useState<Phase>("write");
@@ -12,7 +13,6 @@ export default function LetGoPage() {
   const [letter, setLetter] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
   const [burnProgress, setBurnProgress] = useState(0);
-  const [flushProgress, setFlushProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const mascotReact = useMascotReact();
 
@@ -32,19 +32,11 @@ export default function LetGoPage() {
   }
 
   function finishBurn() {
-    setTimeout(() => { setPhase("flushing"); startFlush(); }, 300);
+    setTimeout(() => setPhase("toilet"), 300);
   }
 
-  function startFlush() {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 0.018;
-      setFlushProgress(Math.min(progress, 1));
-      if (progress >= 1) {
-        clearInterval(interval);
-        setTimeout(() => { setPhase("done"); mascotReact("hopeful", "♡"); }, 600);
-      }
-    }, 50);
+  function flushed() {
+    setTimeout(() => { setPhase("done"); mascotReact("hopeful", "♡"); }, 400);
   }
 
   function reset() {
@@ -53,7 +45,6 @@ export default function LetGoPage() {
     setLetter("");
     setPhoto(null);
     setBurnProgress(0);
-    setFlushProgress(0);
   }
 
   return (
@@ -215,14 +206,10 @@ export default function LetGoPage() {
           </div>
         )}
 
-        {/* PHASE: flushing */}
-        {phase === "flushing" && (
-          <div style={{
-            display: "flex", flexDirection: "column",
-            alignItems: "center", gap: "24px",
-            animation: "fadeInUp 0.5s ease forwards",
-          }}>
-            <FlushAnimation progress={flushProgress} />
+        {/* PHASE: toilet */}
+        {phase === "toilet" && (
+          <div style={{ animation: "fadeInUp 0.5s ease forwards" }}>
+            <ToiletFlush onFlushStart={() => mascotReact("happy", "!!")} onDone={flushed} />
           </div>
         )}
 
@@ -291,85 +278,5 @@ export default function LetGoPage() {
         )}
       </div>
     </main>
-  );
-}
-
-/* ── Flush animation ──
-   Basin is a Blender render (art/basin.py) shown at half size; the swirl is drawn
-   over its water, whose centre and visible radii are in BASIN_WATER. */
-const BASIN_WATER = { cx: 120, cy: 83, rx: 55, ry: 26 };
-
-function FlushAnimation({ progress }: { progress: number }) {
-  const swirling = progress > 0.1;
-  const gone = progress > 0.8;
-  const { cx, cy, rx, ry } = BASIN_WATER;
-
-  return (
-    <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
-      <div style={{ position: "relative", width: "240px", height: "180px" }}>
-        <img src="/art/basin.webp" alt="" width={240} height={180} style={{ display: "block" }} />
-        <svg viewBox="0 0 240 180" style={{ position: "absolute", inset: 0, overflow: "visible" }} aria-hidden>
-          <defs>
-            <clipPath id="basinWater"><ellipse cx={cx} cy={cy} rx={rx} ry={ry} /></clipPath>
-            <radialGradient id="drain">
-              <stop offset="0%" stopColor="rgba(0,0,0,0.9)" />
-              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
-            </radialGradient>
-          </defs>
-          <g clipPath="url(#basinWater)">
-            {/* Dark vortex opening at the centre */}
-            <ellipse cx={cx} cy={cy} rx={6 + progress * 30} ry={(6 + progress * 30) * (ry / rx)} fill="url(#drain)" opacity={progress} />
-
-            {/* Swirl lines, tightening as it drains */}
-            {swirling && [0, 1, 2, 3].map(i => {
-              const k = Math.max(0.12, 1 - i * 0.22 - progress * 0.55);
-              return (
-                <ellipse key={i} cx={cx} cy={cy} rx={rx * k} ry={ry * k}
-                  fill="none"
-                  stroke={`rgba(150,195,240,${0.55 - i * 0.1})`}
-                  strokeWidth="1.5"
-                  strokeDasharray={`${14 - i * 3} ${6 + i * 3}`}
-                  style={{ transformBox: "fill-box", transformOrigin: "center", animation: `swirl ${0.9 - i * 0.15}s linear infinite` }}
-                />
-              );
-            })}
-
-            {/* Ash spiralling in toward the drain */}
-            {!gone && [0, 1, 2, 3, 4, 5].map(i => {
-              const a = progress * 14 + i * 1.05;
-              const r = Math.max(0, 1 - progress * 1.1) * (0.35 + (i % 3) * 0.2);
-              return (
-                <circle key={i}
-                  cx={cx + Math.cos(a) * rx * r}
-                  cy={cy + Math.sin(a) * ry * r}
-                  r={2.2 - (i % 3) * 0.5}
-                  fill={`rgba(40,25,15,${Math.max(0, 0.85 - progress)})`}
-                />
-              );
-            })}
-          </g>
-        </svg>
-      </div>
-
-      <p style={{
-        fontFamily: "var(--font-serif)", fontSize: "22px",
-        fontStyle: "italic",
-        color: gone ? "var(--cream)" : "var(--stone-light)",
-        transition: "color 0.8s ease",
-        letterSpacing: "0.04em",
-      }}>
-        {gone ? "Gone." : progress < 0.4 ? "Going…" : "Almost gone…"}
-      </p>
-
-      {gone && (
-        <p style={{
-          fontFamily: "var(--font-lato)", fontSize: "11px",
-          letterSpacing: "0.3em", textTransform: "uppercase",
-          color: "var(--stone)", animation: "fadeInUp 0.6s ease forwards",
-        }}>
-          washed away
-        </p>
-      )}
-    </div>
   );
 }

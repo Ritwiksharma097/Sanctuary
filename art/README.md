@@ -10,7 +10,7 @@ they can be tweaked and re-rendered rather than edited by hand.
 | `sky.py`    | `sky.webp`                                  | StarField (every page)     |
 | `candle.py` | `candle-<colour>.webp`                      | The Flame                  |
 | `cliff.py`  | `cliff.webp`, `cliff-figure.webp` (sprite sheet via `export-cliff-fig.sh`) | The Cliff |
-| `basin.py`  | `basin.webp`                                | Let Go                     |
+| `toilet.py` | `toilet.webp`, `toilet-lever[-down].webp`, `scrap.webp` | Let Go (ToiletFlush) |
 
 ## Rendering
 
@@ -32,6 +32,6 @@ The Let Go letter burn is not a render: it is drawn live on a canvas
 (components/BurningLetter.tsx).
 
 Overlays drawn in code (coin drop, ripples, candle flames, nazar cracks, the
-cliff's flying words, the basin swirl) line up with positions the scripts print
+cliff's flying words, the toilet's toss and flush) line up with positions the scripts print
 (`WATER_POS`, `WICK_TIP`, `FIGURE_HEAD`, …). If you move a camera, re-run with
 `DRY_RUN=1` and update the matching constant in the component.
