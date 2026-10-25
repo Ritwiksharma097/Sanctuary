@@ -17,3 +17,7 @@ out/
 # misc
 .DS_Store
 npm-debug.log*
+
+# blender intermediates (final art lives in public/art/)
+art/renders/
+__pycache__/

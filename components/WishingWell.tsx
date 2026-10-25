@@ -221,7 +221,8 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
                 cursor: "pointer",
               }}
             >
-              🪙 Drop a Coin
+              <img src="/art/coin.webp" alt="" width={18} height={18} style={{ display: "inline-block", verticalAlign: "-3px", marginRight: "6px" }} />
+              Drop a Coin
             </button>
           </div>
 

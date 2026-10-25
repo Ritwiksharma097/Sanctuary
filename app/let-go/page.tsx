@@ -309,7 +309,10 @@ function BurnAnimation({ letter, name, photo, progress }: {
     <div style={{ position: "relative", width: "320px" }}>
       {/* Paper */}
       <div style={{
-        background: `rgba(245,235,210,${1 - progress * 0.85})`,
+        backgroundColor: `rgba(240,226,192,${1 - progress * 0.85})`,
+        // Aged parchment: darker, browner edges and a faint fibre texture
+        backgroundImage: `radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(110,70,25,${0.35 * (1 - progress)}) 100%),
+          repeating-linear-gradient(8deg, rgba(120,90,40,0.04) 0 2px, transparent 2px 5px)`,
         border: `1px solid rgba(201,168,76,${0.4 - progress * 0.3})`,
         borderRadius: "4px",
         padding: "24px",
@@ -380,21 +383,17 @@ function BurnAnimation({ letter, name, photo, progress }: {
         )}
       </div>
 
-      {/* Flame emojis at base */}
+      {/* Flames licking up from the base */}
       {progress > 0.05 && (
         <div style={{
-          display: "flex", justifyContent: "center",
-          gap: "2px", marginTop: "-4px",
+          display: "flex", justifyContent: "center", alignItems: "flex-end",
+          gap: "0px", marginTop: "-26px",
           position: "relative", zIndex: 6,
           opacity: Math.min(1, progress * 5),
+          filter: "drop-shadow(0 0 10px rgba(255,140,40,0.6))",
         }}>
-          {["🔥", "🔥", "🔥", "🔥", "🔥"].map((f, i) => (
-            <span key={i} style={{
-              fontSize: `${16 + (i === 2 ? 6 : i === 1 || i === 3 ? 4 : 0)}px`,
-              display: "inline-block",
-              animation: `flicker${i % 3} ${0.25 + i * 0.07}s ease-in-out infinite alternate`,
-              transformOrigin: "bottom center",
-            }}>{f}</span>
+          {[0.7, 0.9, 1.15, 0.95, 0.75, 1.05, 0.8].map((h, i) => (
+            <Flame key={i} height={34 * h * (0.7 + progress * 0.6)} delay={i * 0.07} variant={i % 3} />
           ))}
         </div>
       )}
@@ -420,53 +419,85 @@ function BurnAnimation({ letter, name, photo, progress }: {
   );
 }
 
-/* ── Flush animation ── */
+/* ── A single flame tongue (SVG gradient, flickers via CSS) ── */
+function Flame({ height, delay, variant }: { height: number; delay: number; variant: number }) {
+  const id = `flame${variant}`;
+  return (
+    <svg width={height * 0.6} height={height} viewBox="-12 -40 24 40" style={{ overflow: "visible", marginLeft: "-6px", marginRight: "-6px" }}>
+      <defs>
+        <radialGradient id={id} cx="50%" cy="85%" r="75%">
+          <stop offset="0%" stopColor="#fff6cf" />
+          <stop offset="35%" stopColor="#ffc24a" />
+          <stop offset="70%" stopColor="#ff6a1f" />
+          <stop offset="100%" stopColor="#c0392b" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+      <path d="M0,-40 C7,-28 11,-16 8,-6 C6,1 -6,1 -8,-6 C-11,-16 -7,-28 0,-40 Z"
+        fill={`url(#${id})`}
+        style={{
+          transformOrigin: "0px 0px",
+          animation: `flicker${variant} ${0.28 + variant * 0.07}s ease-in-out ${delay}s infinite alternate`,
+        }} />
+    </svg>
+  );
+}
+
+/* ── Flush animation ──
+   Basin is a Blender render (art/basin.py) shown at half size; the swirl is drawn
+   over its water, whose centre and visible radii are in BASIN_WATER. */
+const BASIN_WATER = { cx: 120, cy: 83, rx: 55, ry: 26 };
+
 function FlushAnimation({ progress }: { progress: number }) {
   const swirling = progress > 0.1;
   const gone = progress > 0.8;
+  const { cx, cy, rx, ry } = BASIN_WATER;
 
   return (
     <div style={{ textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: "20px" }}>
-      <svg width="140" height="170" viewBox="0 0 140 170" xmlns="http://www.w3.org/2000/svg" style={{ overflow: "visible" }}>
-        <defs>
-          <radialGradient id="waterBowl" cx="50%" cy="60%" r="50%">
-            <stop offset="0%" stopColor="#1a3a5a" />
-            <stop offset="100%" stopColor="#0d1f30" />
-          </radialGradient>
-        </defs>
-        {/* Bowl */}
-        <path d="M20 60 Q20 140 70 150 Q120 140 120 60" fill="url(#waterBowl)" stroke="rgba(176,160,144,0.3)" strokeWidth="1.5"/>
-        {/* Water surface */}
-        <ellipse cx="70" cy="60" rx="50" ry="12" fill="#1a3a5a" stroke="rgba(100,160,200,0.4)" strokeWidth="1"/>
+      <div style={{ position: "relative", width: "240px", height: "180px" }}>
+        <img src="/art/basin.webp" alt="" width={240} height={180} style={{ display: "block" }} />
+        <svg viewBox="0 0 240 180" style={{ position: "absolute", inset: 0, overflow: "visible" }} aria-hidden>
+          <defs>
+            <clipPath id="basinWater"><ellipse cx={cx} cy={cy} rx={rx} ry={ry} /></clipPath>
+            <radialGradient id="drain">
+              <stop offset="0%" stopColor="rgba(0,0,0,0.9)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </radialGradient>
+          </defs>
+          <g clipPath="url(#basinWater)">
+            {/* Dark vortex opening at the centre */}
+            <ellipse cx={cx} cy={cy} rx={6 + progress * 30} ry={(6 + progress * 30) * (ry / rx)} fill="url(#drain)" opacity={progress} />
 
-        {/* Swirl lines */}
-        {swirling && [0,1,2].map(i => (
-          <ellipse key={i}
-            cx="70" cy={70 + progress * 30}
-            rx={Math.max(1, 28 - i * 8 - progress * 22)}
-            ry={Math.max(0.5, 7 - i * 2 - progress * 5)}
-            fill="none"
-            stroke={`rgba(41,128,185,${0.5 - i * 0.12})`}
-            strokeWidth="1.5"
-            style={{ animation: `swirl ${0.6 - i * 0.1}s linear infinite`, transformBox: "fill-box", transformOrigin: "center" }}
-            strokeDasharray={`${10 - i * 3} ${4 + i * 2}`}
-          />
-        ))}
+            {/* Swirl lines, tightening as it drains */}
+            {swirling && [0, 1, 2, 3].map(i => {
+              const k = Math.max(0.12, 1 - i * 0.22 - progress * 0.55);
+              return (
+                <ellipse key={i} cx={cx} cy={cy} rx={rx * k} ry={ry * k}
+                  fill="none"
+                  stroke={`rgba(150,195,240,${0.55 - i * 0.1})`}
+                  strokeWidth="1.5"
+                  strokeDasharray={`${14 - i * 3} ${6 + i * 3}`}
+                  style={{ transformBox: "fill-box", transformOrigin: "center", animation: `swirl ${0.9 - i * 0.15}s linear infinite` }}
+                />
+              );
+            })}
 
-        {/* Ash/debris spiraling down */}
-        {!gone && (
-          <ellipse
-            cx="70"
-            cy={65 + progress * 70}
-            rx={Math.max(0, 18 - progress * 19)}
-            ry={Math.max(0, 5 - progress * 5.5)}
-            fill={`rgba(40,25,15,${Math.max(0, 0.8 - progress)})`}
-          />
-        )}
-
-        {/* Drain hole darkening */}
-        <circle cx="70" cy="148" r={3 + progress * 4} fill="rgba(0,0,0,0.8)" opacity={progress}/>
-      </svg>
+            {/* Ash spiralling in toward the drain */}
+            {!gone && [0, 1, 2, 3, 4, 5].map(i => {
+              const a = progress * 14 + i * 1.05;
+              const r = Math.max(0, 1 - progress * 1.1) * (0.35 + (i % 3) * 0.2);
+              return (
+                <circle key={i}
+                  cx={cx + Math.cos(a) * rx * r}
+                  cy={cy + Math.sin(a) * ry * r}
+                  r={2.2 - (i % 3) * 0.5}
+                  fill={`rgba(40,25,15,${Math.max(0, 0.85 - progress)})`}
+                />
+              );
+            })}
+          </g>
+        </svg>
+      </div>
 
       <p style={{
         fontFamily: "var(--font-serif)", fontSize: "22px",

@@ -157,7 +157,7 @@ export default function TheHugPage() {
                 letterSpacing: "0.05em", transition: "background 0.2s",
               }}
             >
-              🤗 Send a Hug
+              Send a Hug ♡
             </button>
 
             <p style={{
@@ -280,38 +280,70 @@ export default function TheHugPage() {
   );
 }
 
+// Two warm lights (you, and a stranger) drift toward each other while the hug is
+// sent, then meet in a single glowing heart.
 function HugAnimation({ sending = false }: { sending?: boolean }) {
   return (
-    <div style={{ position: "relative", width: "120px", height: "120px" }}>
-      <svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" width="120" height="120">
+    <div style={{ position: "relative", width: "200px", height: "160px" }}>
+      <svg viewBox="0 0 200 160" width="200" height="160" style={{ overflow: "visible" }}>
         <defs>
-          <radialGradient id="hugGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(201,168,76,0.3)" />
-            <stop offset="100%" stopColor="transparent" />
+          <radialGradient id="soulWarm">
+            <stop offset="0%" stopColor="#fff4d6" />
+            <stop offset="30%" stopColor="#f3c86b" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#c9a84c" stopOpacity="0" />
           </radialGradient>
+          <radialGradient id="soulRose">
+            <stop offset="0%" stopColor="#ffe8e4" />
+            <stop offset="30%" stopColor="#f19a8c" stopOpacity="0.9" />
+            <stop offset="100%" stopColor="#d98880" stopOpacity="0" />
+          </radialGradient>
+          <radialGradient id="hugHalo">
+            <stop offset="0%" stopColor="rgba(243,200,107,0.45)" />
+            <stop offset="100%" stopColor="rgba(243,200,107,0)" />
+          </radialGradient>
+          <linearGradient id="heartFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffe3b0" />
+            <stop offset="100%" stopColor="#e8956b" />
+          </linearGradient>
+          <filter id="softGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="4" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
-        <circle cx="60" cy="60" r="55" fill="url(#hugGlow)"
-          style={{ animation: sending ? "pulse 0.8s ease-in-out infinite alternate" : "none" }}
-        />
-        {/* Left figure */}
-        <circle cx="35" cy="35" r="10" fill="rgba(176,160,144,0.6)" />
-        <path d="M35 45 Q20 60 25 80" stroke="rgba(176,160,144,0.6)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Right figure */}
-        <circle cx="85" cy="35" r="10" fill="rgba(176,160,144,0.6)" />
-        <path d="M85 45 Q100 60 95 80" stroke="rgba(176,160,144,0.6)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        {/* Arms reaching */}
-        <path d="M25 80 Q60 95 95 80" stroke="rgba(201,168,76,0.5)" strokeWidth="2.5" fill="none" strokeLinecap="round"
-          style={{ animation: sending ? "none" : "hugPulse 2s ease-in-out infinite" }}
-        />
-        {/* Heart */}
-        <text x="60" y="68" textAnchor="middle" fontSize="18"
-          style={{ animation: "heartbeat 1.4s ease-in-out infinite" }}
-        >♡</text>
+
+        <circle cx="100" cy="80" r="78" fill="url(#hugHalo)"
+          style={{ animation: sending ? "hugPulse 1.2s ease-in-out infinite" : "hugPulse 3s ease-in-out infinite" }} />
+
+        {sending ? (
+          <>
+            {/* Two lights orbiting closer */}
+            <g style={{ animation: "soulLeft 1.8s ease-in-out forwards" }}>
+              <circle cx="40" cy="80" r="26" fill="url(#soulWarm)" />
+            </g>
+            <g style={{ animation: "soulRight 1.8s ease-in-out forwards" }}>
+              <circle cx="160" cy="80" r="26" fill="url(#soulRose)" />
+            </g>
+          </>
+        ) : (
+          <g style={{ transformBox: "fill-box", transformOrigin: "center", animation: "heartbeat 1.6s ease-in-out infinite" }}>
+            <circle cx="88" cy="76" r="30" fill="url(#soulWarm)" opacity="0.8" />
+            <circle cx="112" cy="76" r="30" fill="url(#soulRose)" opacity="0.8" />
+            <path d="M100 104 C 72 86, 70 62, 86 58 C 94 56, 99 62, 100 66 C 101 62, 106 56, 114 58 C 130 62, 128 86, 100 104 Z"
+              fill="url(#heartFill)" filter="url(#softGlow)" />
+          </g>
+        )}
+
+        {/* Drifting sparks */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
+          <circle key={i} cx={60 + i * 16} cy={120 - (i % 3) * 8} r={1.4} fill="#f3d9a0"
+            style={{ animation: `floatUp ${2.4 + i * 0.3}s ease-out ${i * 0.35}s infinite` }} />
+        ))}
       </svg>
       <style>{`
-        @keyframes pulse { from { opacity: 0.4; } to { opacity: 1; } }
-        @keyframes hugPulse { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
-        @keyframes heartbeat { 0%,100% { font-size: 18px; } 50% { font-size: 22px; } }
+        @keyframes hugPulse  { 0%,100% { opacity: 0.55; } 50% { opacity: 1; } }
+        @keyframes heartbeat { 0%,100% { transform: scale(1); } 15% { transform: scale(1.08); } 30% { transform: scale(1); } 45% { transform: scale(1.05); } }
+        @keyframes soulLeft  { from { transform: translate(0, 0); } to { transform: translate(44px, -6px); } }
+        @keyframes soulRight { from { transform: translate(0, 0); } to { transform: translate(-44px, -6px); } }
       `}</style>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import StarField from "@/components/StarField";
+import Moon from "@/components/Moon";
 import { useMascotReact } from "@/components/Mascot";
 
 type Phase = "idle" | "typing" | "shouting" | "echo" | "still";
@@ -57,12 +58,12 @@ export default function TheCliffPage() {
     const newParticles: WordParticle[] = words.map((word, i) => ({
       id: i,
       word,
-      x: 42 + (Math.random() - 0.3) * 20,  // start near figure on cliff
-      y: 62 + (Math.random() - 0.5) * 10,
+      x: FIGURE.x + 30 + Math.random() * 120,  // start just downwind of the figure
+      y: FIGURE.y - 20 + (Math.random() - 0.5) * 90,
       vx: 0.8 + Math.random() * 1.2,
       vy: -(0.1 + Math.random() * 0.4),
       opacity: 1,
-      size: 10 + Math.random() * 6,
+      size: 24 + Math.random() * 16,
       duration: 1.2 + Math.random() * 0.4,
       delay: Math.random() * 0.3,
     }));
@@ -104,6 +105,7 @@ export default function TheCliffPage() {
   return (
     <main style={{ minHeight: "100vh", position: "relative", overflow: "hidden" }}>
       <StarField />
+      <Moon size={84} />
 
       {/* Full-screen cliff scene */}
       <CliffScene phase={phase} windProgress={windProgress} armsRaised={armsRaised} particles={particles} />
@@ -261,119 +263,69 @@ export default function TheCliffPage() {
   );
 }
 
-/* ── Cliff SVG scene ── */
+/* ── Cliff scene ──
+   Layers are Blender renders (art/cliff.py) on a transparent sky, so the shared
+   sky and moon show through. All share one 1920×1080 camera; the stage below
+   covers the viewport like object-fit: cover, anchored 18% from the left so the
+   figure stays in frame on narrow screens. FIGURE is the figure's head in stage
+   pixels (FIGURE_HEAD printed by the script). */
+const STAGE_W = 1920;
+const STAGE_H = 1080;
+const FIGURE = { x: 0.1682 * STAGE_W, y: 0.4065 * STAGE_H };
+
 function CliffScene({ phase, windProgress, armsRaised, particles }: {
   phase: Phase; windProgress: number; armsRaised: boolean; particles: WordParticle[];
 }) {
+  const layer: React.CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" };
   return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none" }}>
-      <svg viewBox="0 0 800 600" preserveAspectRatio="xMidYMid slice"
-        style={{ width: "100%", height: "100%" }}
-        xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <radialGradient id="skyGrad" cx="50%" cy="0%" r="90%">
-            <stop offset="0%" stopColor="#1c1c3e" />
-            <stop offset="100%" stopColor="#0d0d1a" />
-          </radialGradient>
-          <radialGradient id="moonHalo" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(255,249,230,0.18)" />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-          <linearGradient id="valleyMist" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="rgba(176,160,144,0.04)" />
-            <stop offset="100%" stopColor="rgba(176,160,144,0.0)" />
-          </linearGradient>
-        </defs>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none", overflow: "hidden" }}>
+      <div style={{
+        position: "absolute",
+        bottom: 0,
+        height: "max(100vh, 56.25vw)",
+        width: "calc(max(100vh, 56.25vw) * 16 / 9)",
+        left: "calc((100vw - max(100vh, 56.25vw) * 16 / 9) * 0.18)",
+      }}>
+        <img src="/art/cliff.webp" alt="" style={layer} />
+        <img src="/art/cliff-figure.webp" alt="" style={{ ...layer, opacity: armsRaised ? 0 : 1, transition: "opacity 0.25s" }} />
+        <img src="/art/cliff-figure-up.webp" alt="" style={{ ...layer, opacity: armsRaised ? 1 : 0, transition: "opacity 0.25s" }} />
 
-        {/* Sky */}
-        <rect width="800" height="600" fill="url(#skyGrad)" />
+        <svg viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} style={{ ...layer, overflow: "visible" }} aria-hidden>
+          {/* Gusts streaming off the ledge */}
+          {phase === "shouting" && [0, 1, 2, 3, 4].map(i => (
+            <path key={i}
+              d={`M${FIGURE.x + 60} ${FIGURE.y - 40 + i * 34}
+                  q ${160 + windProgress * 200} ${-30 - i * 6} ${380 + windProgress * 420 + i * 40} ${-20 - windProgress * 60}`}
+              fill="none"
+              stroke={`rgba(220,200,150,${Math.max(0, 0.4 - windProgress * 0.32)})`}
+              strokeWidth={3 - i * 0.4}
+              strokeLinecap="round"
+              style={{ animation: `windLine ${0.8 + i * 0.15}s ease-out ${i * 0.08}s forwards` }}
+            />
+          ))}
 
-        {/* Stars — static a few */}
-        {[
-          [120,60],[200,30],[340,80],[500,45],[620,70],[700,30],[750,90],
-          [60,120],[400,20],[550,110],[150,140],[680,50],
-        ].map(([x,y],i) => (
-          <circle key={i} cx={x} cy={y} r={0.8 + (i%3)*0.4} fill="white" opacity={0.4 + (i%3)*0.2}/>
-        ))}
-
-        {/* Moon */}
-        <circle cx="660" cy="75" r="55" fill="url(#moonHalo)" />
-        <circle cx="660" cy="75" r="26" fill="#f5efe0" opacity="0.92" />
-        <circle cx="653" cy="68" r="8" fill="rgba(220,200,160,0.3)" />
-
-        {/* Far mountains */}
-        <path d="M0 420 L80 310 L160 380 L260 270 L360 350 L460 240 L560 320 L660 230 L760 300 L800 260 L800 600 L0 600 Z"
-          fill="#111125" opacity="0.95" />
-        {/* Mid mountains */}
-        <path d="M0 460 L120 370 L200 420 L310 340 L400 400 L500 330 L600 390 L700 350 L800 380 L800 600 L0 600 Z"
-          fill="#13132b" opacity="0.9" />
-
-        {/* Valley floor mist */}
-        <ellipse cx="400" cy="520" rx="500" ry="80" fill="url(#valleyMist)" />
-
-        {/* Cliff platform the figure stands on */}
-        <path d="M0 500 Q60 494 120 497 Q160 498 195 500 L195 600 L0 600 Z"
-          fill="#1a1a3a" />
-        <path d="M195 500 Q210 496 220 508 Q224 515 226 600 L195 600 Z"
-          fill="#13132b" />
-        {/* Cliff edge highlight */}
-        <path d="M0 500 Q100 496 195 499" fill="none" stroke="rgba(176,160,144,0.15)" strokeWidth="1.5"/>
-
-        {/* Wind lines during shout */}
-        {phase === "shouting" && [0,1,2,3,4].map(i => (
-          <line key={i}
-            x1={220 + windProgress * 60}
-            y1={400 + i * 22 - windProgress * 20}
-            x2={280 + windProgress * 180 + i * 15}
-            y2={395 + i * 22 - windProgress * 40}
-            stroke={`rgba(201,168,76,${Math.max(0, 0.35 - windProgress * 0.3)})`}
-            strokeWidth={1.5 - i * 0.2}
-            strokeLinecap="round"
-            style={{ animation: `windLine ${0.8 + i * 0.15}s ease-out ${i * 0.08}s forwards` }}
-          />
-        ))}
-
-        {/* Word particles flying away */}
-        {particles.map(p => (
-          <text key={p.id}
-            fontSize={p.size}
-            fill={`rgba(245,239,224,${p.opacity})`}
-            fontFamily="Georgia, serif"
-            fontStyle="italic"
-            textAnchor="middle"
-            style={{
-              animation: `wordsCarry ${p.duration}s ease-out ${p.delay}s both`,
-            }}
-            x={`${p.x}%`}
-            y={`${p.y}%`}
-          >
-            {p.word}
-          </text>
-        ))}
-
-        {/* Stick figure on cliff edge */}
-        <g transform="translate(185, 444)">
-          {/* Head */}
-          <circle cx="0" cy="-8" r="6" fill="rgba(176,160,144,0.85)" />
-          {/* Body */}
-          <line x1="0" y1="-2" x2="0" y2="22" stroke="rgba(176,160,144,0.85)" strokeWidth="2.5" strokeLinecap="round" />
-          {/* Arms */}
-          {armsRaised ? (
-            <>
-              <line x1="0" y1="6" x2="-14" y2="-6" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="0" y1="6" x2="14" y2="-6" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-            </>
-          ) : (
-            <>
-              <line x1="0" y1="6" x2="-10" y2="16" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-              <line x1="0" y1="6" x2="10" y2="16" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-            </>
-          )}
-          {/* Legs */}
-          <line x1="0" y1="22" x2="-7" y2="36" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-          <line x1="0" y1="22" x2="7" y2="36" stroke="rgba(176,160,144,0.85)" strokeWidth="2" strokeLinecap="round"/>
-        </g>
-      </svg>
+          {/* Word particles carried out over the valley */}
+          {particles.map(p => (
+            <text key={p.id}
+              fontSize={p.size}
+              fill={`rgba(245,239,224,${p.opacity})`}
+              fontFamily="'Cormorant Garamond', Georgia, serif"
+              fontStyle="italic"
+              textAnchor="middle"
+              style={{
+                animation: `wordsCarry ${p.duration}s ease-out ${p.delay}s both`,
+                transformBox: "fill-box",
+                transformOrigin: "center",
+                textShadow: "0 0 12px rgba(201,168,76,0.5)",
+              }}
+              x={p.x}
+              y={p.y}
+            >
+              {p.word}
+            </text>
+          ))}
+        </svg>
+      </div>
     </div>
   );
 }

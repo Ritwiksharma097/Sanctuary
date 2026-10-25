@@ -29,7 +29,15 @@ export default function StarField() {
     }
   }, []);
 
-  return <div ref={ref} className="fixed inset-0 pointer-events-none z-0" aria-hidden />;
+  // Rendered sky backdrop (art/sky.py) behind the live twinkling stars
+  return (
+    <div
+      ref={ref}
+      className="fixed inset-0 pointer-events-none z-0"
+      style={{ background: "var(--night) url(/art/sky.webp) center / cover no-repeat" }}
+      aria-hidden
+    />
+  );
 }
 
 export function shimmerStars() {
