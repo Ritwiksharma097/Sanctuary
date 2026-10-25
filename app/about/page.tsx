@@ -41,7 +41,7 @@ const PAGES = [
   {
     href: "/companion",
     label: "The Companion",
-    desc: "Say anything. They won't reply in words. But they will hear you.",
+    desc: "Meet Pluto. Say anything. He won't reply in words, but he will hear you.",
   },
 ];
 
