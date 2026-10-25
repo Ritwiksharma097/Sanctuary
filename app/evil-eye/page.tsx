@@ -31,14 +31,21 @@ export default function EvilEyePage() {
   const [eyeScale, setEyeScale] = useState(1);
   const [eyeOpacity, setEyeOpacity] = useState(1);
   const [crackProgress, setCrackProgress] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     setQuote(CLOSING_QUOTES[Math.floor(Math.random() * CLOSING_QUOTES.length)]);
+    return clearTimers;
   }, []);
+
+  function clearTimers() {
+    timersRef.current.forEach(t => clearTimeout(t));
+    timersRef.current = [];
+  }
 
   function startCleanse() {
     if (!name.trim()) return;
+    clearTimers();
     setPhase("cleansing");
     setVisibleLines(0);
     setCrackProgress(0);
@@ -54,22 +61,25 @@ export default function EvilEyePage() {
       if (crack >= 1) {
         clearInterval(crackInterval);
         setEyeOpacity(0);
-        setTimeout(() => setPhase("done"), 600);
       }
     }, 80);
 
-    // Reveal cleansing lines one by one
+    // Reveal cleansing lines one by one; finish once the last line has been read
     let lineIdx = 0;
-    intervalRef.current = setInterval(() => {
+    const lineInterval = setInterval(() => {
       lineIdx++;
       setVisibleLines(lineIdx);
       if (lineIdx >= CLEANSE_LINES.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        clearInterval(lineInterval);
+        timersRef.current.push(setTimeout(() => setPhase("done"), 1500));
       }
     }, 900);
+
+    timersRef.current.push(crackInterval, lineInterval);
   }
 
   function reset() {
+    clearTimers();
     setPhase("idle");
     setName("");
     setFeeling("");

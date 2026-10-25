@@ -87,10 +87,10 @@ export default function TheFlamePage() {
       setFlameIntensity(0.85 + Math.random() * 0.3);
     }, 150);
 
-    // Countdown
-    let remaining = selectedDuration.seconds;
+    // Countdown from a fixed end time so background-tab timer throttling can't stretch it
+    const endsAt = Date.now() + selectedDuration.seconds * 1000;
     intervalRef.current = setInterval(() => {
-      remaining--;
+      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
       setTimeLeft(remaining);
       if (remaining <= 0) {
         if (intervalRef.current) clearInterval(intervalRef.current);

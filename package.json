@@ -6,19 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "preview": "npx wrangler pages dev",
-    "deploy": "npx wrangler pages deploy",
-    "pages:build": "npx @opennextjs/cloudflare build"
+    "preview": "npx wrangler pages dev out",
+    "deploy": "npx wrangler pages deploy out"
   },
   "dependencies": {
     "@hcaptcha/react-hcaptcha": "^1.11.0",
     "next": "15.2.9",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@opennextjs/cloudflare": "1.18.1"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

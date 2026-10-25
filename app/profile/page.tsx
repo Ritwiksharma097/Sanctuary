@@ -28,6 +28,7 @@ export default function ProfilePage() {
         setWishes(w);
         setLetters(l);
       })
+      .catch(() => { window.location.href = "/"; })
       .finally(() => setLoading(false));
   }, []);
 

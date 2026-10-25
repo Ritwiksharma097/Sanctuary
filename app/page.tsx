@@ -2,8 +2,6 @@ import { getStats } from "@/lib/api";
 import StarField from "@/components/StarField";
 import WishingWell from "@/components/WishingWell";
 
-export const revalidate = 60;
-
 export default async function Home() {
   const stats = await getStats();
 

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import WishingWellSVG, { WellHandle } from "./WishingWellSVG";
 import { getRandomQuote } from "@/lib/quotes";
-import { postWish, postLetter, createCoinCheckout } from "@/lib/api";
+import { getStats, getMe, postWish, postLetter, createCoinCheckout, GOOGLE_AUTH_URL } from "@/lib/api";
 import { getToken, getAnonId } from "@/lib/auth";
 import { shimmerStars } from "./StarField";
 import { useMascotReact } from "./Mascot";
@@ -35,19 +35,21 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
   const splashRef = useRef<HTMLAudioElement | null>(null);
   const mascotReact = useMascotReact();
 
+
   useEffect(() => {
-    // Ambient audio setup (you provide the mp3 files in /public)
-    audioRef.current  = new Audio("/sounds/water-ambient.mp3");
-    splashRef.current = new Audio("/sounds/splash.mp3");
-    if (audioRef.current) {
-      audioRef.current.loop   = true;
-      audioRef.current.volume = 0.25;
-    }
-    if (splashRef.current) splashRef.current.volume = 0.6;
+    // The page is statically exported, so the server-rendered count is from build time
+    getStats().then(s => { if (typeof s?.wish_count === "number") setWishCount(s.wish_count); });
   }, []);
 
   function toggleSound() {
-    if (!audioRef.current) return;
+    // Ambient audio is created on first use (you provide the mp3 files in /public/sounds)
+    if (!audioRef.current) {
+      audioRef.current  = new Audio("/sounds/water-ambient.mp3");
+      audioRef.current.loop   = true;
+      audioRef.current.volume = 0.25;
+      splashRef.current = new Audio("/sounds/splash.mp3");
+      splashRef.current.volume = 0.6;
+    }
     if (soundOn) {
       audioRef.current.pause();
     } else {
@@ -437,20 +439,18 @@ function AuthNav() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    import("@/lib/api").then(({ getMe }) => getMe(token).then(setUser));
+    getMe(token).then(setUser).catch(() => {});
   }, []);
-
-  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   return (
     <div className="fixed top-5 left-5 z-20">
       {user ? (
         <a href="/profile" className="flex items-center gap-2 text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)" }}>
           {user.avatar_url && <img src={user.avatar_url} alt="" className="w-6 h-6 rounded-full" />}
-          {user.name.split(" ")[0]}
+          {user.name?.split(" ")[0]}
         </a>
       ) : (
-        <a href={`${API}/auth/google`} className="text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone)", fontFamily: "var(--font-lato)" }}>
+        <a href={GOOGLE_AUTH_URL} className="text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone)", fontFamily: "var(--font-lato)" }}>
           Sign in
         </a>
       )}

@@ -28,6 +28,21 @@ const PAGES = [
     label: "The Cliff",
     desc: "Stand at the edge. Say everything. The valley will carry it.",
   },
+  {
+    href: "/let-go",
+    label: "Let Go",
+    desc: "Say everything you never got to say. Then watch it burn.",
+  },
+  {
+    href: "/the-hug",
+    label: "The Hug",
+    desc: "Warmth, passing between strangers.",
+  },
+  {
+    href: "/companion",
+    label: "The Companion",
+    desc: "Say anything. They won't reply in words. But they will hear you.",
+  },
 ];
 
 export default function AboutPage() {
@@ -57,7 +72,7 @@ export default function AboutPage() {
             This website doesn't believe in anything. But it believes in you, and in the very human need to have somewhere quiet to put your hopes.
           </p>
           <p style={prose}>
-            Every ritual here is ancient. The wishing well is Roman. The evil eye crosses dozens of cultures. The candle gazing is as old as fire. The sacred phrases come from eight traditions across six continents. We did not invent any of it. We only removed the gatekeeping.
+            Every ritual here is ancient. The wishing well is Roman. The evil eye crosses dozens of cultures. The candle gazing is as old as fire. We did not invent any of it. We only removed the gatekeeping.
           </p>
           <p style={prose}>
             No religion required. No culture required. Just a person who needs a moment, and a place that was already here.

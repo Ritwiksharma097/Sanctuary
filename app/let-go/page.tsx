@@ -448,7 +448,7 @@ function FlushAnimation({ progress }: { progress: number }) {
             fill="none"
             stroke={`rgba(41,128,185,${0.5 - i * 0.12})`}
             strokeWidth="1.5"
-            style={{ animation: `swirl ${0.6 - i * 0.1}s linear infinite` }}
+            style={{ animation: `swirl ${0.6 - i * 0.1}s linear infinite`, transformBox: "fill-box", transformOrigin: "center" }}
             strokeDasharray={`${10 - i * 3} ${4 + i * 2}`}
           />
         ))}

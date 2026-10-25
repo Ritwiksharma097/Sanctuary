@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import StarField from "@/components/StarField";
 import { useMascotReact } from "@/components/Mascot";
 
@@ -31,7 +31,8 @@ interface WordParticle {
   vy: number;
   opacity: number;
   size: number;
-  rotation: number;
+  duration: number;
+  delay: number;
 }
 
 export default function TheCliffPage() {
@@ -43,7 +44,6 @@ export default function TheCliffPage() {
   const [windProgress, setWindProgress] = useState(0);
   const [particles, setParticles] = useState<WordParticle[]>([]);
   const [armsRaised, setArmsRaised] = useState(false);
-  const animFrame = useRef<number | null>(null);
   const mascotReact = useMascotReact();
 
   function startShout() {
@@ -63,7 +63,8 @@ export default function TheCliffPage() {
       vy: -(0.1 + Math.random() * 0.4),
       opacity: 1,
       size: 10 + Math.random() * 6,
-      rotation: (Math.random() - 0.5) * 20,
+      duration: 1.2 + Math.random() * 0.4,
+      delay: Math.random() * 0.3,
     }));
     setParticles(newParticles);
 
@@ -98,7 +99,6 @@ export default function TheCliffPage() {
     setWindProgress(0);
     setParticles([]);
     setArmsRaised(false);
-    if (animFrame.current) cancelAnimationFrame(animFrame.current);
   }
 
   return (
@@ -342,12 +342,10 @@ function CliffScene({ phase, windProgress, armsRaised, particles }: {
             fontStyle="italic"
             textAnchor="middle"
             style={{
-              animation: `wordsCarry ${1.2 + Math.random() * 0.4}s ease-out forwards`,
-              animationDelay: `${Math.random() * 0.3}s`,
+              animation: `wordsCarry ${p.duration}s ease-out ${p.delay}s both`,
             }}
             x={`${p.x}%`}
             y={`${p.y}%`}
-            transform={`rotate(${p.rotation})`}
           >
             {p.word}
           </text>

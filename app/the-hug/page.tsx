@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import StarField from "@/components/StarField";
 import { useMascotReact } from "@/components/Mascot";
 
-const ZOMBITA_NAMES = ["Zombita", "Zombita", "Zombita"]; // always Zombita
 
 const WARM_MESSAGES = [
   "Someone out there is thinking of you.",
