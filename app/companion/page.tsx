@@ -141,7 +141,7 @@ export default function CompanionPage() {
               action.play();
             }
 
-            sceneRef.current = { scene, camera, renderer, mixer, model };
+            sceneRef.current = { ...(sceneRef.current || {}), scene, camera, renderer, mixer, model };
             setLoaded(true);
 
             // Render loop
@@ -264,7 +264,7 @@ export default function CompanionPage() {
             </div>
           )}
 
-          {/* Error fallback — 2D dog emoji companion */}
+          {/* Error fallback: 2D dog emoji companion */}
           {error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ fontSize: "80px", animation: "sealAppear 0.6s ease forwards" }}>🐕</div>
@@ -415,13 +415,24 @@ export default function CompanionPage() {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Cache by src so a remount waits for an in-flight script instead of
+// resolving before it has actually loaded.
+const scriptPromises = new Map<string, Promise<void>>();
+
 function loadScript(src: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+  const existing = scriptPromises.get(src);
+  if (existing) return existing;
+  const promise = new Promise<void>((resolve, reject) => {
     const s = document.createElement("script");
     s.src = src;
     s.onload  = () => resolve();
-    s.onerror = () => reject(new Error(`Failed to load ${src}`));
+    s.onerror = () => {
+      scriptPromises.delete(src);
+      s.remove();
+      reject(new Error(`Failed to load ${src}`));
+    };
     document.head.appendChild(s);
   });
+  scriptPromises.set(src, promise);
+  return promise;
 }

@@ -13,7 +13,7 @@ export const QUOTES = [
   { text: "Not all those who wander are lost.", author: "J.R.R. Tolkien" },
   { text: "Somewhere, something incredible is waiting to be known.", author: "Sharon Begley" },
   { text: "The only way out of the labyrinth of suffering is to forgive.", author: "John Green" },
-  { text: "Keep your face always toward the sunshine — shadows will fall behind you.", author: "Walt Whitman" },
+  { text: "Keep your face always toward the sunshine, and shadows will fall behind you.", author: "Walt Whitman" },
   { text: "You are braver than you believe, stronger than you seem.", author: "A.A. Milne" },
   { text: "What lies behind us and what lies before us are tiny matters compared to what lies within us.", author: "Ralph Waldo Emerson" },
   { text: "Even the darkest night will end and the sun will rise.", author: "Victor Hugo" },

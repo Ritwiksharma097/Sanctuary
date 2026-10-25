@@ -31,14 +31,21 @@ export default function EvilEyePage() {
   const [eyeScale, setEyeScale] = useState(1);
   const [eyeOpacity, setEyeOpacity] = useState(1);
   const [crackProgress, setCrackProgress] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   useEffect(() => {
     setQuote(CLOSING_QUOTES[Math.floor(Math.random() * CLOSING_QUOTES.length)]);
+    return clearTimers;
   }, []);
+
+  function clearTimers() {
+    timersRef.current.forEach(t => clearTimeout(t));
+    timersRef.current = [];
+  }
 
   function startCleanse() {
     if (!name.trim()) return;
+    clearTimers();
     setPhase("cleansing");
     setVisibleLines(0);
     setCrackProgress(0);
@@ -54,22 +61,25 @@ export default function EvilEyePage() {
       if (crack >= 1) {
         clearInterval(crackInterval);
         setEyeOpacity(0);
-        setTimeout(() => setPhase("done"), 600);
       }
     }, 80);
 
-    // Reveal cleansing lines one by one
+    // Reveal cleansing lines one by one; finish once the last line has been read
     let lineIdx = 0;
-    intervalRef.current = setInterval(() => {
+    const lineInterval = setInterval(() => {
       lineIdx++;
       setVisibleLines(lineIdx);
       if (lineIdx >= CLEANSE_LINES.length) {
-        if (intervalRef.current) clearInterval(intervalRef.current);
+        clearInterval(lineInterval);
+        timersRef.current.push(setTimeout(() => setPhase("done"), 1500));
       }
     }, 900);
+
+    timersRef.current.push(crackInterval, lineInterval);
   }
 
   function reset() {
+    clearTimers();
     setPhase("idle");
     setName("");
     setFeeling("");
@@ -331,7 +341,8 @@ export default function EvilEyePage() {
             }}
           >
             {/* Intact eye amulet, now glowing softly */}
-            <div style={{ fontSize: "48px", lineHeight: 1 }}>🧿</div>
+            <img src="/art/nazar.webp" alt="" width={96} height={96}
+              style={{ filter: "drop-shadow(0 0 22px rgba(80,150,255,0.45))", animation: "sealAppear 0.8s ease forwards" }} />
 
             <div
               style={{
@@ -441,67 +452,51 @@ export default function EvilEyePage() {
   );
 }
 
+// The bead is a Blender render (art/props.py, nazar). Cracks are drawn on top as the
+// cleanse runs. Bead centre/radius are in the 180px display box.
+const BEAD = { cx: 90, cy: 92, r: 69 };
+
 function EvilEyeSVG({ crackProgress }: { crackProgress: number }) {
-  const hue = Math.round(crackProgress * 30); // shifts from blue toward amber as it cracks
-  const eyeColor = crackProgress > 0.5 ? `hsl(${200 - hue * 4}, 60%, ${40 + crackProgress * 20}%)` : "#1a6faf";
-
+  const crack = (from: number, d: string, w: number) =>
+    crackProgress > from && (
+      <path d={d} fill="none" stroke="rgba(255,236,190,0.95)" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round"
+        pathLength={1} strokeDasharray="1" strokeDashoffset={Math.max(0, 1 - (crackProgress - from) * 3)}
+        filter="url(#crackGlow)" />
+    );
   return (
-    <svg width="140" height="140" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="eyeGlow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stopColor={crackProgress > 0 ? "#c9a84c" : "#2a9dd8"} stopOpacity="0.3" />
-          <stop offset="100%" stopColor="transparent" />
-        </radialGradient>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-      </defs>
-
-      {/* Outer glow */}
-      <circle cx="70" cy="70" r="65" fill="url(#eyeGlow)" />
-
-      {/* Main eye circle */}
-      <circle
-        cx="70" cy="70" r="56"
-        fill="#0a3a5e"
-        stroke="#1a6faf"
-        strokeWidth="3"
-        style={{ transition: "fill 0.3s" }}
+    <div style={{ position: "relative", width: "180px", height: "180px" }}>
+      <img
+        src="/art/nazar.webp"
+        alt=""
+        width={180}
+        height={180}
+        style={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          filter: `drop-shadow(0 0 ${18 + crackProgress * 30}px rgba(${Math.round(60 + crackProgress * 160)},${Math.round(130 + crackProgress * 40)},255,${0.35 + crackProgress * 0.3}))
+                   saturate(${1 - crackProgress * 0.5}) brightness(${1 + crackProgress * 0.25})`,
+          transition: "filter 0.2s",
+        }}
       />
-
-      {/* White of eye */}
-      <ellipse cx="70" cy="70" rx="42" ry="28" fill="#d4e8f5" opacity={1 - crackProgress * 0.6} />
-
-      {/* Iris */}
-      <circle
-        cx="70" cy="70" r="18"
-        fill={eyeColor}
-        style={{ transition: "fill 0.2s" }}
-      />
-
-      {/* Pupil */}
-      <circle cx="70" cy="70" r="9" fill="#0d0d1a" opacity={1 - crackProgress * 0.8} />
-
-      {/* Pupil shine */}
-      <circle cx="66" cy="66" r="3" fill="white" opacity={1 - crackProgress} />
-
-      {/* Crack lines that appear as cleanse progresses */}
-      {crackProgress > 0.2 && (
-        <line x1="70" y1="14" x2="65" y2="70" stroke="var(--gold)" strokeWidth="1.5" opacity={Math.min(1, (crackProgress - 0.2) * 3)} />
-      )}
-      {crackProgress > 0.4 && (
-        <line x1="70" y1="70" x2="90" y2="110" stroke="var(--gold)" strokeWidth="1" opacity={Math.min(1, (crackProgress - 0.4) * 3)} />
-      )}
-      {crackProgress > 0.55 && (
-        <line x1="30" y1="50" x2="70" y2="70" stroke="var(--gold)" strokeWidth="1" opacity={Math.min(1, (crackProgress - 0.55) * 4)} />
-      )}
-      {crackProgress > 0.7 && (
-        <line x1="70" y1="70" x2="110" y2="55" stroke="var(--gold)" strokeWidth="1" opacity={Math.min(1, (crackProgress - 0.7) * 5)} />
-      )}
-
-      {/* Outer ring decoration */}
-      <circle cx="70" cy="70" r="62" fill="none" stroke="#1a6faf" strokeWidth="1" strokeDasharray="4 6" opacity="0.6" />
-    </svg>
+      <svg viewBox="0 0 180 180" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", overflow: "visible" }} aria-hidden>
+        <defs>
+          <filter id="crackGlow" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="1.4" result="b" />
+            <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
+          <clipPath id="beadClip"><circle cx={BEAD.cx} cy={BEAD.cy} r={BEAD.r} /></clipPath>
+        </defs>
+        <g clipPath="url(#beadClip)">
+          {crack(0.15, "M90 92 L84 70 L88 52 L80 34 L83 22", 1.6)}
+          {crack(0.3, "M90 92 L104 104 L112 126 L128 138 L134 152", 1.4)}
+          {crack(0.45, "M90 92 L70 98 L52 94 L38 104 L24 102", 1.2)}
+          {crack(0.55, "M88 52 L100 44 L112 46", 0.9)}
+          {crack(0.6, "M90 92 L110 80 L130 82 L146 70", 1.2)}
+          {crack(0.72, "M112 126 L98 140 L96 156", 0.9)}
+          {crack(0.8, "M52 94 L50 116 L40 132", 0.9)}
+        </g>
+      </svg>
+    </div>
   );
 }

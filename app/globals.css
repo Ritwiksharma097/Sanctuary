@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Lato:wght@300;400&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -44,23 +42,11 @@ html, body {
 }
 
 /* ── Coin falls into well ──────────────────────────── */
-@keyframes coinFall {
-  0%   { transform: translateY(0) rotate(0deg) scale(1);   opacity: 1; }
-  70%  { opacity: 1; }
-  100% { transform: translateY(82px) rotate(540deg) scale(0.3); opacity: 0; }
-}
-
-/* Old coinArc kept for compatibility */
-@keyframes coinArc {
-  0%   { transform: translateY(0) translateX(0) rotate(0deg) scale(1); opacity: 1; }
-  60%  { opacity: 1; }
-  100% { transform: translateY(120px) translateX(-20px) rotate(720deg) scale(0.4); opacity: 0; }
-}
 
 /* ── Well ripple ───────────────────────────────────── */
 @keyframes wellRipple {
-  0%   { rx: 8; ry: 4; opacity: 0.8; }
-  100% { rx: 88; ry: 18; opacity: 0; }
+  0%   { transform: scale(0.08); opacity: 0.9; }
+  100% { transform: scale(1);    opacity: 0; }
 }
 
 /* ── Wish dissolve ─────────────────────────────────── */
@@ -109,15 +95,6 @@ html, body {
   50%       { box-shadow: 0 0 40px 10px rgba(201,168,76,0.2); }
 }
 
-.well-glow {
-  animation: pulseGlow 4s ease-in-out infinite;
-}
-
-/* ── Water shimmer ─────────────────────────────────── */
-@keyframes waterShimmer {
-  0%, 100% { opacity: 0.4; }
-  50%       { opacity: 0.7; }
-}
 
 /* ── Burn / flame flicker ──────────────────────────── */
 @keyframes flicker {
@@ -131,6 +108,24 @@ html, body {
 @keyframes flicker1 { 0%{transform:scaleY(0.9) translateY(0)} 50%{transform:scaleY(1.2) translateY(-4px)} 100%{transform:scaleY(0.95) translateY(2px)} }
 @keyframes flicker2 { 0%{transform:scaleY(1.1) translateY(-1px)} 50%{transform:scaleY(0.85) translateY(2px)} 100%{transform:scaleY(1.1) translateY(-2px)} }
 
+/* ── Let Go: the match ────────────────────────────── */
+@keyframes matchNudge {
+  0%, 100% { transform: rotate(0deg); }
+  50%      { transform: rotate(-4deg) translateY(-2px); }
+}
+
+@keyframes sparkFly {
+  from { transform: translate(0, 0); opacity: 1; }
+  to   { transform: translate(var(--vx), calc(var(--vy) + 30px)); opacity: 0; }
+}
+
+/* ── Smoke from a blown-out candle ─────────────────── */
+@keyframes smokeRise {
+  0%   { opacity: 0;    transform: translateY(8px) scaleX(0.6); }
+  25%  { opacity: 0.8; }
+  100% { opacity: 0;    transform: translateY(-30px) scaleX(1.6); }
+}
+
 /* ── Ash float ─────────────────────────────────────── */
 @keyframes ashFloat0 { 0%{transform:translateY(0) translateX(0)} 100%{transform:translateY(-60px) translateX(-12px); opacity:0} }
 @keyframes ashFloat1 { 0%{transform:translateY(0) translateX(0)} 100%{transform:translateY(-50px) translateX(8px); opacity:0} }
@@ -140,13 +135,36 @@ html, body {
 @keyframes windLine {
   0%   { opacity: 0; transform: translateX(0); }
   20%  { opacity: 1; }
-  100% { opacity: 0; transform: translateX(120px); }
+  100% { opacity: 0; transform: translateX(260px); }
+}
+
+/* ── Voice rings and valley mist (cliff) ─────────── */
+@keyframes voiceRing {
+  0%   { transform: scale(0.4); opacity: 0; }
+  15%  { opacity: 0.45; }
+  100% { transform: scale(4.5) translateX(10px); opacity: 0; }
+}
+
+.cliff-mist {
+  background:
+    radial-gradient(ellipse 22% 38% at 12% 55%, rgba(150,165,210,0.22), transparent 70%),
+    radial-gradient(ellipse 18% 30% at 34% 40%, rgba(150,165,210,0.18), transparent 70%),
+    radial-gradient(ellipse 26% 42% at 58% 62%, rgba(150,165,210,0.2), transparent 70%),
+    radial-gradient(ellipse 20% 34% at 82% 45%, rgba(150,165,210,0.18), transparent 70%);
+  filter: blur(14px);
+  animation: mistDrift 60s ease-in-out infinite alternate;
+}
+
+@keyframes mistDrift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-18%); }
 }
 
 /* ── Words fly away (cliff) ────────────────────────── */
 @keyframes wordsCarry {
-  0%   { opacity: 1; transform: translateX(0) translateY(0) scale(1); filter: blur(0); }
-  100% { opacity: 0; transform: translateX(300px) translateY(-60px) scale(0.3); filter: blur(3px); }
+  0%   { opacity: 0; transform: translateX(-20px) translateY(10px) scale(0.8); filter: blur(2px); }
+  12%  { opacity: 1; transform: translateX(40px) translateY(-6px) scale(1.05); filter: blur(0); }
+  100% { opacity: 0; transform: translateX(900px) translateY(-160px) scale(0.35); filter: blur(4px); }
 }
 
 /* ── Flush swirl ───────────────────────────────────── */

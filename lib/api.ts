@@ -6,7 +6,7 @@ function authHeaders(token?: string | null): Record<string, string> {
 
 export async function getStats() {
   try {
-    const res = await fetch(`${API}/stats`, { next: { revalidate: 60 } });
+    const res = await fetch(`${API}/stats`);
     if (!res.ok) return { wish_count: 48291, coin_count: 0 };
     return res.json();
   } catch {

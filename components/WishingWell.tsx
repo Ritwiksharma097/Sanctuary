@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react";
 import WishingWellSVG, { WellHandle } from "./WishingWellSVG";
 import { getRandomQuote } from "@/lib/quotes";
-import { postWish, postLetter, createCoinCheckout } from "@/lib/api";
+import { getStats, getMe, postWish, postLetter, createCoinCheckout, GOOGLE_AUTH_URL } from "@/lib/api";
 import { getToken, getAnonId } from "@/lib/auth";
 import { shimmerStars } from "./StarField";
 import { useMascotReact } from "./Mascot";
@@ -29,25 +29,28 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
   const [loading,        setLoading]        = useState(false);
   const [soundOn,        setSoundOn]        = useState(false);
   const [showWishText,   setShowWishText]   = useState(true);
+  const [coinError,      setCoinError]      = useState(false);
 
   const wellRef  = useRef<WellHandle>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const splashRef = useRef<HTMLAudioElement | null>(null);
   const mascotReact = useMascotReact();
 
+
   useEffect(() => {
-    // Ambient audio setup (you provide the mp3 files in /public)
-    audioRef.current  = new Audio("/sounds/water-ambient.mp3");
-    splashRef.current = new Audio("/sounds/splash.mp3");
-    if (audioRef.current) {
-      audioRef.current.loop   = true;
-      audioRef.current.volume = 0.25;
-    }
-    if (splashRef.current) splashRef.current.volume = 0.6;
+    // The page is statically exported, so the server-rendered count is from build time
+    getStats().then(s => { if (typeof s?.wish_count === "number") setWishCount(s.wish_count); });
   }, []);
 
   function toggleSound() {
-    if (!audioRef.current) return;
+    // Ambient audio is created on first use (you provide the mp3 files in /public/sounds)
+    if (!audioRef.current) {
+      audioRef.current  = new Audio("/sounds/water-ambient.mp3");
+      audioRef.current.loop   = true;
+      audioRef.current.volume = 0.25;
+      splashRef.current = new Audio("/sounds/splash.mp3");
+      splashRef.current.volume = 0.6;
+    }
     if (soundOn) {
       audioRef.current.pause();
     } else {
@@ -65,7 +68,7 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
       const anonId = getAnonId();
       await postWish(wishText.trim(), anonId, token);
       setWishCount(c => c + 1);
-    } catch { /* silent — wish still completes visually */ }
+    } catch { /* silent: wish still completes visually */ }
 
     // Dissolve animation
     setShowWishText(false);
@@ -84,19 +87,22 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
   }
 
   async function handleCoinToss() {
-    if (!selectedCoin) return;
+    if (!selectedCoin || loading) return;
     setLoading(true);
+    setCoinError(false);
+    // The coin goes in straight away; checkout opens once it has landed
+    wellRef.current?.triggerCoinDrop();
+    mascotReact("happy", "✦");
+    if (soundOn && splashRef.current) setTimeout(() => splashRef.current?.play().catch(() => {}), 1600);
+    const landed = new Promise(r => setTimeout(r, 2400));
     try {
       const token  = getToken();
       const anonId = getAnonId();
-      const { checkout_url } = await createCoinCheckout(selectedCoin, anonId, token);
-      wellRef.current?.triggerCoinDrop();
-      if (soundOn && splashRef.current) splashRef.current.play().catch(() => {});
-      mascotReact("happy", "🪙!");
-      setTimeout(() => {
-        window.location.href = checkout_url;
-      }, 1000);
+      const [{ checkout_url }] = await Promise.all([createCoinCheckout(selectedCoin, anonId, token), landed]);
+      window.location.href = checkout_url;
     } catch {
+      await landed;
+      setCoinError(true);
       setLoading(false);
     }
   }
@@ -219,7 +225,8 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
                 cursor: "pointer",
               }}
             >
-              🪙 Drop a Coin
+              <img src="/art/coin.webp" alt="" width={18} height={18} style={{ display: "inline-block", verticalAlign: "-3px", marginRight: "6px" }} />
+              Drop a Coin
             </button>
           </div>
 
@@ -265,6 +272,11 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
               >
                 Toss it in →
               </button>
+              {coinError && (
+                <p className="text-xs text-center" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)", maxWidth: "280px", lineHeight: 1.6 }}>
+                  The coin is in the well, but the payment page couldn&apos;t open. Please try again in a moment.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -285,7 +297,7 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
             "{quote.text}"
           </blockquote>
           <p className="text-xs tracking-widest uppercase" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)" }}>
-            — {quote.author}
+            {quote.author}
           </p>
 
           <div style={{ width: "60px", height: "1px", background: "linear-gradient(90deg, transparent, var(--gold), transparent)" }} />
@@ -437,20 +449,18 @@ function AuthNav() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    import("@/lib/api").then(({ getMe }) => getMe(token).then(setUser));
+    getMe(token).then(setUser).catch(() => {});
   }, []);
-
-  const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
   return (
     <div className="fixed top-5 left-5 z-20">
       {user ? (
         <a href="/profile" className="flex items-center gap-2 text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)" }}>
           {user.avatar_url && <img src={user.avatar_url} alt="" className="w-6 h-6 rounded-full" />}
-          {user.name.split(" ")[0]}
+          {user.name?.split(" ")[0]}
         </a>
       ) : (
-        <a href={`${API}/auth/google`} className="text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone)", fontFamily: "var(--font-lato)" }}>
+        <a href={GOOGLE_AUTH_URL} className="text-xs tracking-widest uppercase hover:text-amber-300 transition-colors" style={{ color: "var(--stone)", fontFamily: "var(--font-lato)" }}>
           Sign in
         </a>
       )}

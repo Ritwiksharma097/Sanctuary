@@ -60,7 +60,7 @@ export default function ContactPage() {
             </h1>
             <p className="text-base italic mb-10" style={{ fontFamily: "var(--font-serif)", color: "var(--stone-light)", lineHeight: 1.7 }}>
               Did your wish come true? We'd love to know.<br />
-              Or just tell us anything — we read every message.
+              Or just tell us anything. We read every message.
             </p>
 
             <div className="flex flex-col gap-4">

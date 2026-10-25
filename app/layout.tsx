@@ -3,7 +3,7 @@ import "./globals.css";
 import Mascot from "@/components/Mascot";
 
 export const metadata: Metadata = {
-  title: "Sanctuary — A quiet place",
+  title: "Sanctuary · A quiet place",
   description: "Write your wish. Cleanse what follows you. Sit with a flame. A quiet place for anyone who needs it.",
   keywords: ["wishing well", "make a wish", "evil eye", "candle meditation", "sanctuary", "hope", "ritual"],
   openGraph: {

@@ -87,10 +87,10 @@ export default function TheFlamePage() {
       setFlameIntensity(0.85 + Math.random() * 0.3);
     }, 150);
 
-    // Countdown
-    let remaining = selectedDuration.seconds;
+    // Countdown from a fixed end time so background-tab timer throttling can't stretch it
+    const endsAt = Date.now() + selectedDuration.seconds * 1000;
     intervalRef.current = setInterval(() => {
-      remaining--;
+      const remaining = Math.max(0, Math.round((endsAt - Date.now()) / 1000));
       setTimeLeft(remaining);
       if (remaining <= 0) {
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -233,6 +233,11 @@ export default function TheFlamePage() {
                   margin: "24px auto 0",
                 }}
               />
+            </div>
+
+            {/* Preview of the chosen candle, unlit */}
+            <div style={{ marginBottom: "24px", transform: "scale(0.8)", transformOrigin: "center bottom", marginTop: "-40px" }}>
+              <Candle colorId={selectedColor.id} flameColor={selectedColor.flame} glowColor={selectedColor.glow} intensity={0} unlit />
             </div>
 
             {/* Color picker */}
@@ -407,8 +412,8 @@ export default function TheFlamePage() {
           >
             {/* Animated candle */}
             <div style={{ position: "relative" }}>
-              <CandleSVG
-                color={color.hex}
+              <Candle
+                colorId={color.id}
                 flameColor={color.flame}
                 glowColor={color.glow}
                 intensity={flameIntensity}
@@ -479,8 +484,8 @@ export default function TheFlamePage() {
             }}
           >
             {/* Extinguished candle */}
-            <CandleSVG
-              color={color.hex}
+            <Candle
+              colorId={color.id}
               flameColor={color.flame}
               glowColor={color.glow}
               intensity={0}
@@ -607,84 +612,111 @@ export default function TheFlamePage() {
   );
 }
 
-function CandleSVG({
-  color,
+// Wax body is a Blender render (art/candle.py); the flame and glow are drawn live on top.
+// WICK_Y is the wick tip as a fraction of the render's height (printed by the script).
+const CANDLE_W = 130;
+const CANDLE_H = 280;
+const WICK_Y = 0.358 * CANDLE_H;
+
+function Candle({
+  colorId,
   flameColor,
   glowColor,
   intensity,
   extinguished = false,
+  unlit = false,
 }: {
-  color: string;
+  colorId: string;
   flameColor: string;
   glowColor: string;
   intensity: number;
   extinguished?: boolean;
+  unlit?: boolean;
 }) {
+  const lit = !extinguished && !unlit;
   return (
-    <svg width="80" height="200" viewBox="0 0 80 200" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <radialGradient id="flameGlow" cx="50%" cy="80%" r="60%">
-          <stop offset="0%" stopColor={flameColor} stopOpacity={0.9 * intensity} />
-          <stop offset="60%" stopColor={glowColor} stopOpacity={0.4 * intensity} />
-          <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-        </radialGradient>
-        <radialGradient id="candleBody" cx="30%" cy="50%" r="70%">
-          <stop offset="0%" stopColor={color} stopOpacity="0.9" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.5" />
-        </radialGradient>
-      </defs>
-
-      {/* Glow around flame */}
-      {!extinguished && (
-        <ellipse cx="40" cy="52" rx="30" ry="40" fill="url(#flameGlow)" opacity={intensity} />
+    <div style={{ position: "relative", width: `${CANDLE_W}px`, height: `${CANDLE_H}px` }}>
+      {/* Warm light spilling around the candle */}
+      {lit && (
+        <div style={{
+          position: "absolute",
+          left: "50%", top: `${WICK_Y - 30}px`,
+          width: "320px", height: "320px",
+          transform: `translate(-50%, -50%) scale(${0.9 + intensity * 0.12})`,
+          background: `radial-gradient(circle, ${glowColor} 0%, transparent 62%)`,
+          opacity: 0.55 * intensity,
+          transition: "transform 0.15s, opacity 0.15s",
+          pointerEvents: "none",
+        }} />
       )}
 
-      {/* Flame */}
-      {!extinguished && intensity > 0 && (
-        <g transform={`translate(40, 48) scale(${0.9 + intensity * 0.1})`}>
-          <path
-            d={`M0,-28 C${6 + Math.random() * 2},-18 ${10 + Math.random() * 3},-8 0,0 C${-(10 + Math.random() * 3)},-8 ${-(6 + Math.random() * 2)},-18 0,-28`}
-            fill={flameColor}
-            opacity={0.95}
-          />
-          {/* Inner bright core */}
-          <path
-            d="M0,-16 C3,-10 5,-4 0,0 C-5,-4 -3,-10 0,-16"
-            fill="white"
-            opacity={0.7 * intensity}
-          />
-        </g>
+      <img
+        src={`/art/candle-${colorId}.webp`}
+        alt=""
+        width={CANDLE_W}
+        height={CANDLE_H}
+        style={{
+          position: "relative",
+          display: "block",
+          width: "100%",
+          height: "100%",
+          filter: lit ? "none" : unlit ? "brightness(0.8)" : "brightness(0.55) saturate(0.85)",
+          transition: "filter 1.2s ease",
+        }}
+      />
+
+      {/* Flame: outer coloured tongue, warm middle, white-hot core */}
+      {lit && (
+        <svg
+          width="40" height="70" viewBox="-20 -66 40 70"
+          style={{
+            position: "absolute",
+            left: "50%", top: `${WICK_Y - 64}px`,
+            transform: "translateX(-50%)",
+            overflow: "visible",
+            pointerEvents: "none",
+          }}
+        >
+          <defs>
+            <radialGradient id="flameOuter" cx="50%" cy="80%" r="70%">
+              <stop offset="0%" stopColor="#fff3c4" />
+              <stop offset="45%" stopColor={flameColor} />
+              <stop offset="100%" stopColor={flameColor} stopOpacity="0" />
+            </radialGradient>
+            <radialGradient id="flameCore" cx="50%" cy="75%" r="60%">
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="70%" stopColor="#ffe9a8" />
+              <stop offset="100%" stopColor="#ffd27a" stopOpacity="0" />
+            </radialGradient>
+            <filter id="flameBlur" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="1.6" />
+            </filter>
+          </defs>
+          <g style={{ transformOrigin: "0px 0px", animation: "flicker 0.35s ease-in-out infinite alternate" }}>
+            <path d="M0,-58 C9,-40 14,-22 10,-8 C7,1 -7,1 -10,-8 C-14,-22 -9,-40 0,-58 Z"
+              fill="url(#flameOuter)" filter="url(#flameBlur)" opacity={0.95} />
+            <path d="M0,-38 C5,-26 7,-14 5,-6 C3,-1 -3,-1 -5,-6 C-7,-14 -5,-26 0,-38 Z"
+              fill="url(#flameCore)" filter="url(#flameBlur)" />
+            {/* Blue base where the flame meets the wick */}
+            <ellipse cx="0" cy="-3" rx="4" ry="3" fill="rgba(120,170,255,0.55)" filter="url(#flameBlur)" />
+          </g>
+        </svg>
       )}
 
-      {/* Smoke when extinguished */}
+      {/* Smoke curling up from a blown-out wick */}
       {extinguished && (
-        <path
-          d="M40,48 C42,40 38,32 40,24 C42,16 38,10 40,4"
-          stroke="rgba(176,160,144,0.5)"
-          strokeWidth="1.5"
-          fill="none"
-          strokeLinecap="round"
-        />
+        <svg width="60" height="120" viewBox="-30 -120 60 120"
+          style={{ position: "absolute", left: "50%", top: `${WICK_Y - 116}px`, transform: "translateX(-50%)", overflow: "visible", pointerEvents: "none" }}>
+          <filter id="smokeBlur"><feGaussianBlur stdDeviation="2.2" /></filter>
+          {[0, 1.3, 2.6].map(delay => (
+            <path key={delay}
+              d="M0,0 C6,-18 -8,-34 0,-52 C8,-70 -6,-88 2,-110"
+              stroke="rgba(190,180,170,0.45)" strokeWidth="3" fill="none" strokeLinecap="round"
+              filter="url(#smokeBlur)"
+              style={{ animation: `smokeRise 3.9s ease-out ${delay}s infinite both` }} />
+          ))}
+        </svg>
       )}
-
-      {/* Wick */}
-      <line x1="40" y1="48" x2="40" y2="60" stroke="#3a2a1a" strokeWidth="2" strokeLinecap="round" />
-
-      {/* Wax drip */}
-      <path d="M28,80 Q26,90 27,95" stroke={color} strokeWidth="4" fill="none" strokeLinecap="round" opacity="0.6" />
-      <path d="M52,72 Q54,82 53,88" stroke={color} strokeWidth="3" fill="none" strokeLinecap="round" opacity="0.4" />
-
-      {/* Candle body */}
-      <rect x="26" y="60" width="28" height="128" rx="4" fill="url(#candleBody)" />
-
-      {/* Candle top rim */}
-      <ellipse cx="40" cy="60" rx="14" ry="4" fill={color} opacity="0.8" />
-
-      {/* Candle shine */}
-      <rect x="30" y="70" width="4" height="90" rx="2" fill="white" opacity="0.12" />
-
-      {/* Base */}
-      <ellipse cx="40" cy="188" rx="18" ry="5" fill={color} opacity="0.5" />
-    </svg>
+    </div>
   );
 }
