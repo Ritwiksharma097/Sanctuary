@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import StarField from "@/components/StarField";
 import Moon from "@/components/Moon";
 import { useMascotReact } from "@/components/Mascot";
@@ -65,14 +65,14 @@ export default function TheCliffPage() {
       opacity: 1,
       size: 24 + Math.random() * 16,
       duration: 1.2 + Math.random() * 0.4,
-      delay: Math.random() * 0.3,
+      delay: 0.75 + i * 0.12 + Math.random() * 0.2,   // once the arms are up, one after another
     }));
     setParticles(newParticles);
 
     // Wind progress for cliff scene
     let wind = 0;
     const windInterval = setInterval(() => {
-      wind += 0.015;
+      wind += 0.011;   // ~3.6s of wind: long enough for every word to leave
       setWindProgress(Math.min(wind, 1));
       if (wind >= 1) {
         clearInterval(windInterval);
@@ -202,7 +202,7 @@ export default function TheCliffPage() {
           </div>
         )}
 
-        {/* Shouting — just let the cliff scene do the work */}
+        {/* Shouting: just let the cliff scene do the work */}
         {phase === "shouting" && (
           <div style={{ height: "80px" }} />
         )}
@@ -273,10 +273,65 @@ const STAGE_W = 1920;
 const STAGE_H = 1080;
 const FIGURE = { x: 0.1682 * STAGE_W, y: 0.4065 * STAGE_H };
 
+// The figure is an animated sprite sheet (art/export-cliff-fig.sh): 8 frames per row,
+// each cropped to FIG_CROP (left, top, right, bottom as fractions of the stage).
+// Frames: 16 idle loop, 10 arms raising, 16 shouting loop.
+const FIG_CROP = [0.1115, 0.3271, 0.2642, 0.5639];
+const SHEET_COLS = 8;
+const SHEET_ROWS = 6;
+const IDLE = { start: 0, len: 16 };
+const RAISE = { start: 16, len: 10 };
+const SHOUT = { start: 26, len: 16 };
+const FPS = 12;
+
+type FigureMode = "idle" | "raising" | "shout" | "lowering";
+
+function useFigureFrame(armsRaised: boolean) {
+  const [frame, setFrame] = useState(0);
+  const state = useRef<{ mode: FigureMode; i: number }>({ mode: "idle", i: 0 });
+
+  useEffect(() => {
+    const st = state.current;
+    if (armsRaised && (st.mode === "idle" || st.mode === "lowering")) {
+      // From idle start the raise from the bottom; mid-lower, raise from where the arms are
+      if (st.mode === "idle") st.i = 0;
+      st.mode = "raising";
+    }
+    if (!armsRaised && (st.mode === "shout" || st.mode === "raising")) {
+      st.i = st.mode === "shout" ? RAISE.len - 1 : st.i;
+      st.mode = "lowering";
+    }
+  }, [armsRaised]);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const st = state.current;
+      let f = 0;
+      if (st.mode === "idle") { f = IDLE.start + (st.i % IDLE.len); st.i++; }
+      else if (st.mode === "raising") {
+        f = RAISE.start + st.i;
+        if (++st.i >= RAISE.len) { st.mode = "shout"; st.i = 0; }
+      } else if (st.mode === "shout") { f = SHOUT.start + (st.i % SHOUT.len); st.i++; }
+      else {
+        f = RAISE.start + st.i;
+        if (--st.i < 0) { st.mode = "idle"; st.i = 0; }
+      }
+      setFrame(f);
+    }, 1000 / FPS);
+    return () => clearInterval(id);
+  }, []);
+
+  return frame;
+}
+
 function CliffScene({ phase, windProgress, armsRaised, particles }: {
   phase: Phase; windProgress: number; armsRaised: boolean; particles: WordParticle[];
 }) {
   const layer: React.CSSProperties = { position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" };
+  const frame = useFigureFrame(armsRaised);
+  const col = frame % SHEET_COLS;
+  const row = Math.floor(frame / SHEET_COLS);
+  const shouting = phase === "shouting";
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 1, pointerEvents: "none", overflow: "hidden" }}>
       <div style={{
@@ -286,13 +341,51 @@ function CliffScene({ phase, windProgress, armsRaised, particles }: {
         width: "calc(max(100vh, 56.25vw) * 16 / 9)",
         left: "calc((100vw - max(100vh, 56.25vw) * 16 / 9) * 0.18)",
       }}>
+        {/* Moonlight swells while the figure shouts */}
+        <div style={{
+          ...layer,
+          background: "radial-gradient(ellipse at 82% 8%, rgba(200,215,255,0.22), transparent 55%)",
+          opacity: shouting ? 1 : 0.35,
+          transition: "opacity 1.2s ease",
+        }} />
+
         <img src="/art/cliff.webp" alt="" style={layer} />
-        <img src="/art/cliff-figure.webp" alt="" style={{ ...layer, opacity: armsRaised ? 0 : 1, transition: "opacity 0.25s" }} />
-        <img src="/art/cliff-figure-up.webp" alt="" style={{ ...layer, opacity: armsRaised ? 1 : 0, transition: "opacity 0.25s" }} />
+
+        {/* Valley mist, drifting; the shout drives it away down the valley */}
+        <div style={{
+          position: "absolute", left: "15%", right: "-30%", top: "52%", height: "30%",
+          transform: shouting ? "translateX(-14%)" : "none",
+          opacity: shouting ? 0.95 : 0.55,
+          transition: "transform 3.5s ease-out, opacity 1.5s ease",
+        }}>
+          <div className="cliff-mist" style={{ position: "absolute", inset: 0 }} />
+        </div>
+
+        {/* The figure */}
+        <div style={{
+          position: "absolute",
+          left: `${FIG_CROP[0] * 100}%`,
+          top: `${FIG_CROP[1] * 100}%`,
+          width: `${(FIG_CROP[2] - FIG_CROP[0]) * 100}%`,
+          height: `${(FIG_CROP[3] - FIG_CROP[1]) * 100}%`,
+          backgroundImage: "url(/art/cliff-figure.webp)",
+          backgroundSize: `${SHEET_COLS * 100}% ${SHEET_ROWS * 100}%`,
+          backgroundPosition: `${(col / (SHEET_COLS - 1)) * 100}% ${(row / (SHEET_ROWS - 1)) * 100}%`,
+        }} />
 
         <svg viewBox={`0 0 ${STAGE_W} ${STAGE_H}`} style={{ ...layer, overflow: "visible" }} aria-hidden>
+          {/* The voice: rings pulsing out from the figure across the valley */}
+          {shouting && [0, 1, 2, 3].map(i => (
+            <ellipse key={i} cx={FIGURE.x + 10} cy={FIGURE.y + 10} rx={60} ry={34}
+              fill="none" stroke="rgba(230,215,175,0.4)" strokeWidth={1.5}
+              style={{
+                transformBox: "fill-box", transformOrigin: "center",
+                animation: `voiceRing 2.2s ease-out ${0.7 + i * 0.45}s infinite both`,
+              }} />
+          ))}
+
           {/* Gusts streaming off the ledge */}
-          {phase === "shouting" && [0, 1, 2, 3, 4].map(i => (
+          {shouting && [0, 1, 2, 3, 4].map(i => (
             <path key={i}
               d={`M${FIGURE.x + 60} ${FIGURE.y - 40 + i * 34}
                   q ${160 + windProgress * 200} ${-30 - i * 6} ${380 + windProgress * 420 + i * 40} ${-20 - windProgress * 60}`}
@@ -300,7 +393,7 @@ function CliffScene({ phase, windProgress, armsRaised, particles }: {
               stroke={`rgba(220,200,150,${Math.max(0, 0.4 - windProgress * 0.32)})`}
               strokeWidth={3 - i * 0.4}
               strokeLinecap="round"
-              style={{ animation: `windLine ${0.8 + i * 0.15}s ease-out ${i * 0.08}s forwards` }}
+              style={{ animation: `windLine ${0.8 + i * 0.15}s ease-out ${0.6 + i * 0.08}s both` }}
             />
           ))}
 

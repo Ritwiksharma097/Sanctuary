@@ -264,7 +264,7 @@ export default function CompanionPage() {
             </div>
           )}
 
-          {/* Error fallback — 2D dog emoji companion */}
+          {/* Error fallback: 2D dog emoji companion */}
           {error && (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
               <div style={{ fontSize: "80px", animation: "sealAppear 0.6s ease forwards" }}>🐕</div>

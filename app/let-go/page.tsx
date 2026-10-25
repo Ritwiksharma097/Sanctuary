@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from "react";
 import StarField from "@/components/StarField";
+import BurningLetter from "@/components/BurningLetter";
 import { useMascotReact } from "@/components/Mascot";
 
 type Phase = "write" | "burning" | "flushing" | "done";
@@ -25,17 +26,13 @@ export default function LetGoPage() {
 
   function startBurn() {
     if (!letter.trim()) return;
+    setBurnProgress(0);
     setPhase("burning");
     mascotReact("sad", "...");
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 0.008;
-      setBurnProgress(Math.min(progress, 1));
-      if (progress >= 1) {
-        clearInterval(interval);
-        setTimeout(() => { setPhase("flushing"); startFlush(); }, 400);
-      }
-    }, 50);
+  }
+
+  function finishBurn() {
+    setTimeout(() => { setPhase("flushing"); startFlush(); }, 300);
   }
 
   function startFlush() {
@@ -82,7 +79,7 @@ export default function LetGoPage() {
         minHeight: "100vh", padding: "80px 24px 80px",
       }}>
 
-        {/* Header — only show on write phase */}
+        {/* Header: only show on write phase */}
         {phase === "write" && (
           <div style={{ textAlign: "center", marginBottom: "40px" }}>
             <p style={{
@@ -205,7 +202,7 @@ export default function LetGoPage() {
             display: "flex", flexDirection: "column", alignItems: "center", gap: "32px",
             animation: "fadeInUp 0.4s ease forwards",
           }}>
-            <BurnAnimation letter={letter} name={name} photo={photo} progress={burnProgress} />
+            <BurningLetter letter={letter} name={name} photo={photo} onProgress={setBurnProgress} onDone={finishBurn} />
             <p style={{
               fontFamily: "var(--font-serif)", fontSize: "20px",
               fontStyle: "italic", color: "var(--stone-light)",
@@ -294,151 +291,6 @@ export default function LetGoPage() {
         )}
       </div>
     </main>
-  );
-}
-
-/* ── Burn animation ── */
-function BurnAnimation({ letter, name, photo, progress }: {
-  letter: string; name: string; photo: string | null; progress: number;
-}) {
-  // How far up the burn has consumed (0→1)
-  const burnHeight = progress * 115; // % of paper height
-  const charHeight = progress * 80;
-
-  return (
-    <div style={{ position: "relative", width: "320px" }}>
-      {/* Paper */}
-      <div style={{
-        backgroundColor: `rgba(240,226,192,${1 - progress * 0.85})`,
-        // Aged parchment: darker, browner edges and a faint fibre texture
-        backgroundImage: `radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(110,70,25,${0.35 * (1 - progress)}) 100%),
-          repeating-linear-gradient(8deg, rgba(120,90,40,0.04) 0 2px, transparent 2px 5px)`,
-        border: `1px solid rgba(201,168,76,${0.4 - progress * 0.3})`,
-        borderRadius: "4px",
-        padding: "24px",
-        position: "relative",
-        overflow: "hidden",
-        minHeight: "180px",
-        boxShadow: progress > 0.2
-          ? `0 0 ${progress * 40}px ${progress * 20}px rgba(192,57,43,0.15)`
-          : "none",
-        transition: "box-shadow 0.3s",
-      }}>
-        {/* Letter text */}
-        <p style={{
-          fontFamily: "var(--font-serif)", fontSize: "15px",
-          color: `rgba(13,13,26,${Math.max(0, 1 - progress * 1.4)})`,
-          lineHeight: 1.65, margin: 0,
-          whiteSpace: "pre-wrap", wordBreak: "break-word",
-          maxHeight: "140px", overflow: "hidden",
-          position: "relative", zIndex: 2,
-        }}>
-          {name && `Dear ${name},\n\n`}{letter.slice(0, 300)}{letter.length > 300 ? "…" : ""}
-        </p>
-
-        {/* Photo if exists */}
-        {photo && (
-          <div style={{
-            marginTop: "12px", width: "60px", height: "60px",
-            borderRadius: "4px", overflow: "hidden",
-            opacity: Math.max(0, 1 - progress * 2),
-            position: "relative", zIndex: 2,
-          }}>
-            <img src={photo} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          </div>
-        )}
-
-        {/* Char edge — dark at the bottom creeping up */}
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          height: `${charHeight}%`,
-          background: "linear-gradient(to top, #0d0d0d 0%, rgba(40,20,10,0.9) 40%, transparent 100%)",
-          pointerEvents: "none", zIndex: 3,
-          transition: "height 0.08s linear",
-        }} />
-
-        {/* Fire overlay — orange/red rising */}
-        <div style={{
-          position: "absolute", bottom: `${charHeight * 0.6}%`, left: 0, right: 0,
-          height: `${progress * 50}%`,
-          background: "linear-gradient(to top, rgba(192,57,43,0.0) 0%, rgba(230,126,34,0.7) 40%, rgba(241,196,15,0.4) 70%, transparent 100%)",
-          pointerEvents: "none", zIndex: 4,
-          mixBlendMode: "screen",
-          transition: "height 0.08s linear, bottom 0.08s linear",
-        }} />
-
-        {/* Glowing ember edge */}
-        {progress > 0.1 && (
-          <div style={{
-            position: "absolute",
-            bottom: `${charHeight * 0.6}%`,
-            left: "5%", right: "5%",
-            height: "3px",
-            background: `rgba(241,196,15,${Math.min(1, progress * 2)})`,
-            borderRadius: "999px",
-            boxShadow: `0 0 8px 3px rgba(230,126,34,0.6)`,
-            pointerEvents: "none", zIndex: 5,
-            transition: "bottom 0.08s linear",
-          }} />
-        )}
-      </div>
-
-      {/* Flames licking up from the base */}
-      {progress > 0.05 && (
-        <div style={{
-          display: "flex", justifyContent: "center", alignItems: "flex-end",
-          gap: "0px", marginTop: "-26px",
-          position: "relative", zIndex: 6,
-          opacity: Math.min(1, progress * 5),
-          filter: "drop-shadow(0 0 10px rgba(255,140,40,0.6))",
-        }}>
-          {[0.7, 0.9, 1.15, 0.95, 0.75, 1.05, 0.8].map((h, i) => (
-            <Flame key={i} height={34 * h * (0.7 + progress * 0.6)} delay={i * 0.07} variant={i % 3} />
-          ))}
-        </div>
-      )}
-
-      {/* Rising ash particles */}
-      {progress > 0.25 && (
-        <div style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }}>
-          {[...Array(8)].map((_, i) => (
-            <div key={i} style={{
-              position: "absolute",
-              width: `${2 + (i % 3)}px`,
-              height: `${2 + (i % 3)}px`,
-              borderRadius: "50%",
-              background: i % 2 === 0 ? "rgba(200,180,160,0.7)" : "rgba(100,80,60,0.5)",
-              left: `${10 + i * 11}%`,
-              bottom: `${20 + (i % 4) * 12}%`,
-              animation: `ashFloat${i % 3} ${1.2 + i * 0.25}s ease-out ${i * 0.15}s infinite`,
-            }} />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ── A single flame tongue (SVG gradient, flickers via CSS) ── */
-function Flame({ height, delay, variant }: { height: number; delay: number; variant: number }) {
-  const id = `flame${variant}`;
-  return (
-    <svg width={height * 0.6} height={height} viewBox="-12 -40 24 40" style={{ overflow: "visible", marginLeft: "-6px", marginRight: "-6px" }}>
-      <defs>
-        <radialGradient id={id} cx="50%" cy="85%" r="75%">
-          <stop offset="0%" stopColor="#fff6cf" />
-          <stop offset="35%" stopColor="#ffc24a" />
-          <stop offset="70%" stopColor="#ff6a1f" />
-          <stop offset="100%" stopColor="#c0392b" stopOpacity="0" />
-        </radialGradient>
-      </defs>
-      <path d="M0,-40 C7,-28 11,-16 8,-6 C6,1 -6,1 -8,-6 C-11,-16 -7,-28 0,-40 Z"
-        fill={`url(#${id})`}
-        style={{
-          transformOrigin: "0px 0px",
-          animation: `flicker${variant} ${0.28 + variant * 0.07}s ease-in-out ${delay}s infinite alternate`,
-        }} />
-    </svg>
   );
 }
 

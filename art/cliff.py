@@ -2,11 +2,13 @@
 layered ridges fading into mist. Sky is transparent so the site's shared
 sky and moon show through.
 
-Renders (all 1920x1080, same camera, so they stack exactly):
-  cliff.png             landscape only
-  cliff-figure.png      cloaked figure, arms at sides (landscape held out)
-  cliff-figure-up.png   same figure, arms raised
-Prints FIGURE_HEAD / FIGURE_FEET positions for the word-particle overlay."""
+Renders (same 1920x1080 camera, so the layers stack exactly):
+  cliff.png               landscape only
+  cliff-fig/NNN.png       the cloaked figure, animated, cropped to FIG_CROP
+                          (landscape held out). Frames: idle loop, arms
+                          raising, shout loop; art/export-cliff-fig.sh packs
+                          the sprite sheet.
+Prints FIGURE_HEAD and FIG_CROP for the overlays in the page."""
 import math
 import os
 import random
@@ -19,7 +21,7 @@ from mathutils import Vector, noise  # noqa: E402
 import lib  # noqa: E402
 
 SAMPLES = int(os.environ.get("SAMPLES", 128))
-ONLY = os.environ.get("ONLY", "landscape,figure,figure-up").split(",")
+ONLY = os.environ.get("ONLY", "landscape,anim").split(",")
 W, H = 1920, 1080
 FOG = (0.05, 0.06, 0.12)
 
@@ -196,57 +198,154 @@ for i, (y, z, size) in enumerate([(22, -10, 120), (45, -9, 200), (95, -8, 320), 
 landscape = [o for o in bpy.data.objects if o.type == "MESH"]
 
 # ── Figure ───────────────────────────────────────────────────────────────────
+# Faces away from us, into the valley (+Y). Wind blows toward +X.
 FEET = Vector((-5.6, 0.6, 0.12))
-cloth = lib.mat_noisy("Cloak", (0.02, 0.02, 0.03), (0.06, 0.055, 0.07), scale=20, rough=0.9, bump=0.2)
-skin = lib.mat_basic("Skin", (0.12, 0.09, 0.08), rough=0.7)
-scarf_mat = lib.mat_noisy("Scarf", (0.35, 0.22, 0.06), (0.65, 0.45, 0.15), scale=15, rough=0.8)
+cloth = lib.mat_noisy("Cloak", (0.02, 0.02, 0.03), (0.07, 0.065, 0.08), scale=20, rough=0.85, bump=0.3)
+skin = lib.mat_basic("Skin", (0.16, 0.12, 0.1), rough=0.6)
+scarf_mat = lib.mat_noisy("Scarf", (0.4, 0.25, 0.06), (0.75, 0.52, 0.18), scale=15, rough=0.75)
+
+IDLE, RAISE, SHOUT = 16, 10, 16
+TAU = math.pi * 2
 
 
-def figure(arms_up):
+def pose_for(frame):
+    """Pose parameters per frame. Loops use whole sine periods so they wrap seamlessly."""
+    if frame < IDLE:
+        ph = TAU * frame / IDLE
+        return dict(raise_=0.0, wind=0.35, ph=ph, breath=math.sin(ph))
+    if frame < IDLE + RAISE:
+        k = (frame - IDLE + 1) / RAISE
+        k = k * k * (3 - 2 * k)                          # ease in-out
+        ph = TAU * (frame - IDLE) / 8
+        return dict(raise_=k, wind=0.35 + 0.65 * k, ph=ph, breath=0.0)
+    ph = TAU * (frame - IDLE - RAISE) / SHOUT
+    return dict(raise_=1.0, wind=1.0, ph=ph, breath=0.0, strain=math.sin(2 * ph))
+
+
+def lean_xform(p, raise_):
+    """Lean back toward the camera and lift the chest as the arms go up."""
+    ang = -0.12 * raise_
+    rel = p - FEET
+    y = rel.y * math.cos(ang) - rel.z * math.sin(ang)
+    z = rel.y * math.sin(ang) + rel.z * math.cos(ang)
+    return FEET + Vector((rel.x, y, z))
+
+
+def mesh_obj(name, verts, faces, mat):
+    me = bpy.data.meshes.new(name)
+    me.from_pydata(verts, [], faces)
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    lib.smooth(o, subsurf=1)
+    return lib.assign(o, mat)
+
+
+def figure(frame):
+    P = pose_for(frame)
+    r, wind, ph = P["raise_"], P["wind"], P["ph"]
+    strain = P.get("strain", 0.0)
     parts = []
-    # Cloak: a flared, slightly windswept cone
-    bpy.ops.mesh.primitive_cone_add(vertices=32, radius1=0.42, radius2=0.15, depth=1.35,
-                                    location=FEET + Vector((0, 0, 0.68)))
-    c = bpy.context.object
-    for v in c.data.vertices:
-        if v.co.z < 0:   # hem swings downwind
-            v.co.x += 0.12 * (-v.co.z)
-    lib.smooth(c, subsurf=2)
-    lib.displace(c, strength=0.04, scale=0.15)
-    parts.append(lib.assign(c, cloth))
-    # Hooded head
-    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.15, location=FEET + Vector((0.02, 0, 1.5)))
+
+    # Cloak: a lathed bell from the shoulders to the hem; the lower rings ripple downwind
+    rings, segs = 12, 40
+    verts, faces = [], []
+    for i in range(rings):
+        t = i / (rings - 1)                               # 0 = shoulders, 1 = hem
+        z = 1.34 - t * 1.32
+        rad = 0.16 + 0.27 * t ** 0.8 + 0.02 * P["breath"] * (1 - t)
+        for j in range(segs):
+            a = TAU * j / segs
+            x, y = rad * math.cos(a), rad * 0.8 * math.sin(a)
+            flap = wind * t ** 1.8
+            x += flap * (0.13 + 0.04 * math.sin(ph + a * 2 + t * 4))
+            y += flap * 0.035 * math.sin(ph * 2 + a * 3)
+            z += flap * 0.025 * math.sin(ph + a * 3 + t * 5) * max(0, math.cos(a))
+            p = lean_xform(FEET + Vector((x, y, z)), r)
+            p.z = max(p.z, FEET.z + 0.01)                 # the hem never lifts off or sinks into the rock
+            verts.append(p)
+        if i:
+            for j in range(segs):
+                a0, a1 = (i - 1) * segs + j, (i - 1) * segs + (j + 1) % segs
+                faces.append((a0, a1, a1 + segs, a0 + segs))
+    parts.append(mesh_obj("Cloak", verts, faces, cloth))
+
+    # Shoulders under the cloak give the silhouette some breadth
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=1, location=lean_xform(FEET + Vector((0, 0, 1.27)), r))
+    sh = bpy.context.object
+    sh.scale = (0.25, 0.15, 0.11)
+    lib.smooth(sh)
+    parts.append(lib.assign(sh, cloth))
+
+    # Hood: rounded crown plus a soft point falling back, tilting up as it shouts
+    tilt = 0.35 * r
+    head_c = lean_xform(FEET + Vector((0.0, 0.0, 1.5)), r)
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=0.14, location=head_c)
     hd = bpy.context.object
-    hd.scale = (1, 1, 1.15)
+    hd.scale = (1.0, 1.2, 1.15)
+    hd.rotation_euler.x = -tilt
     lib.smooth(hd)
     parts.append(lib.assign(hd, cloth))
-    # Scarf streaming in the wind toward the valley
-    bpy.ops.curve.primitive_bezier_curve_add(location=FEET + Vector((0.05, 0, 1.33)))
+    # Soft peak at the crown, blown slightly downwind, so the outline reads as a hood
+    bpy.ops.mesh.primitive_cone_add(vertices=16, radius1=0.1, depth=0.28,
+                                    location=head_c + Vector((0.05 + 0.03 * wind, 0.02, 0.13)))
+    pt = bpy.context.object
+    pt.rotation_euler = (-0.1 - tilt * 0.5, math.radians(32 + 18 * wind), 0)
+    lib.smooth(pt, subsurf=1)
+    parts.append(lib.assign(pt, cloth))
+    # Hood drape: a short flared cone from the head down onto the shoulders
+    bpy.ops.mesh.primitive_cone_add(vertices=24, radius1=0.21, radius2=0.12, depth=0.2,
+                                    location=lean_xform(FEET + Vector((0, 0, 1.38)), r))
+    dr = bpy.context.object
+    dr.rotation_euler.x = -0.12 * r
+    lib.smooth(dr, subsurf=1)
+    parts.append(lib.assign(dr, cloth))
+
+    # Arms: shoulder → elbow → hand, swinging up and out across the frame (X)
+    for side in (-1, 1):
+        shoulder = lean_xform(FEET + Vector((side * 0.21, 0.0, 1.3)), r)
+        up = math.radians(8 + 140 * r + 4 * strain)          # 0 = hanging straight down
+        bend = math.radians(30 * math.sin(math.pi * r) + 12 * (1 - r) - 8 * r)
+
+        def direction(theta):
+            return Vector((side * math.sin(theta), 0.06 + 0.1 * r, -math.cos(theta)))
+
+        elbow = shoulder + direction(up) * 0.3
+        hand = elbow + direction(up + bend) * 0.29
+        for a_, b_, rad in ((shoulder, elbow, 0.062), (elbow, hand, 0.072)):
+            vec = b_ - a_
+            bpy.ops.mesh.primitive_cone_add(vertices=14, radius1=rad * 0.85, radius2=rad, depth=vec.length,
+                                            location=(a_ + b_) / 2)
+            seg = bpy.context.object
+            seg.rotation_euler = vec.to_track_quat("Z", "Y").to_euler()
+            lib.smooth(seg)
+            parts.append(lib.assign(seg, cloth))
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.05, location=hand + direction(up + bend) * 0.04)
+        hnd = bpy.context.object
+        hnd.scale = (0.9, 0.7, 1.2)
+        lib.smooth(hnd)
+        parts.append(lib.assign(hnd, skin))
+
+    # Scarf streaming downwind, rippling harder as the wind rises
+    neck = lean_xform(FEET + Vector((0.08, -0.05, 1.36)), r)
+    bpy.ops.curve.primitive_bezier_curve_add(location=neck)
     sc = bpy.context.object
-    pts = sc.data.splines[0].bezier_points
-    pts[0].co, pts[0].handle_left, pts[0].handle_right = (0, 0, 0), (-0.1, 0, 0), (0.25, 0, 0.05)
-    pts[1].co, pts[1].handle_left, pts[1].handle_right = (0.9, 0.05, -0.12), (0.6, 0, 0.05), (1.1, 0.1, -0.25)
-    sc.data.bevel_depth = 0.035
-    sc.data.extrude = 0.06
+    spline = sc.data.splines[0]
+    spline.bezier_points.add(2)
+    spline.bezier_points.add(2)
+    length = 0.55 + 0.6 * wind
+    n = len(spline.bezier_points)
+    for k, bp in enumerate(spline.bezier_points):
+        t = k / (n - 1)
+        x = t * length
+        y = 0.06 * math.sin(ph * 2 + t * 7) * wind * t
+        z = -0.22 * t * (1.2 - wind) + 0.09 * math.sin(ph * 2 + t * 8) * (0.3 + wind) * t
+        bp.co = (x, y, z)
+        bp.handle_left_type = bp.handle_right_type = "AUTO"
+        bp.radius = 1.0 - 0.5 * t                        # tapers toward the loose end
+    sc.data.bevel_depth = 0.022
+    sc.data.extrude = 0.04
     sc.data.materials.append(scarf_mat)
     parts.append(sc)
-    # Arms: hidden in the cloak when lowered, flung up and out when raised
-    for side in (-1, 1):
-        # Figure faces away from us, into the valley: arms spread across the frame (X)
-        sh = FEET + Vector((side * 0.17, 0.02, 1.3))
-        if arms_up:
-            hand = sh + Vector((side * 0.42, 0.05, 0.5))
-        else:
-            hand = sh + Vector((side * 0.12, 0.03, -0.55))
-        mid = (sh + hand) / 2
-        vec = hand - sh
-        bpy.ops.mesh.primitive_cylinder_add(vertices=12, radius=0.07, depth=vec.length, location=mid)
-        a = bpy.context.object
-        a.rotation_euler = vec.to_track_quat("Z", "Y").to_euler()
-        lib.smooth(a)
-        parts.append(lib.assign(a, cloth))
-        bpy.ops.mesh.primitive_uv_sphere_add(radius=0.055, location=hand)
-        parts.append(lib.assign(bpy.context.object, skin))
     return parts
 
 
@@ -254,11 +353,18 @@ def figure(arms_up):
 moon = lib.sun(1.6, (0.75, 0.82, 1.0), (math.radians(75), 0, math.radians(200)))   # low, behind, upper right
 moon.data.angle = math.radians(2)
 lib.area(400, (0.5, 0.6, 1.0), (-4, -16, 6), size=10, target=(-4, 0, 0))            # faint cool fill
+# A soft rim from the moon's side so the silhouette and arms read against the ridges
+rim = lib.area(120, (0.7, 0.8, 1.0), (-3.5, 4.0, 3.0), size=2, target=FEET + Vector((0, 0, 1.2)))
 lib.camera((-1.0, -16.0, 2.4), (4, 30, -2.5), lens=30)
 lib.resolution(W, H)
 print("FIGURE_HEAD", lib.project(FEET + Vector((0, 0, 1.6))))
 print("FIGURE_FEET", lib.project(FEET))
-print("CLIFF_EDGE", lib.project((-4.7, 0.6, 0)))
+
+# Crop window around everything the figure can reach (arms up, scarf out)
+corners = [FEET + Vector((dx, 0, dz)) for dx in (-1.0, 1.75) for dz in (-0.1, 2.45)]
+xs, ys = zip(*(lib.project(c) for c in corners))
+CROP = (round(min(xs), 4), round(min(ys), 4), round(max(xs), 4), round(max(ys), 4))   # left, top, right, bottom
+print("FIG_CROP", CROP)
 
 
 def set_holdout(objs, on):
@@ -269,12 +375,16 @@ def set_holdout(objs, on):
 if "landscape" in ONLY:
     lib.render("cliff", W, H, SAMPLES)
 
-for name, up in (("figure", False), ("figure-up", True)):
-    if name not in ONLY:
-        continue
-    fig = figure(up)
+if "anim" in ONLY:
+    scene.render.use_border = True
+    scene.render.use_crop_to_border = True
+    scene.render.border_min_x, scene.render.border_max_x = CROP[0], CROP[2]
+    scene.render.border_min_y, scene.render.border_max_y = 1 - CROP[3], 1 - CROP[1]
     set_holdout(landscape, True)
-    lib.render(f"cliff-{name}", W, H, SAMPLES)
-    set_holdout(landscape, False)
-    for o in fig:
-        bpy.data.objects.remove(o, do_unlink=True)
+    os.makedirs(os.path.join(lib.RENDERS, "cliff-fig"), exist_ok=True)
+    frames = [int(f) for f in os.environ["FRAMES"].split(",")] if os.environ.get("FRAMES") else range(IDLE + RAISE + SHOUT)
+    for fr in frames:
+        fig = figure(fr)
+        lib.render(f"cliff-fig/{fr:03d}", W, H, SAMPLES)
+        for o in fig:
+            bpy.data.objects.remove(o, do_unlink=True)

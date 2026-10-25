@@ -3,7 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "About — Wishing Well",
+  title: "About · Wishing Well",
   description: "What is Wishing Well and why does it exist.",
 };
 

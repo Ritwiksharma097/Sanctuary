@@ -42,12 +42,6 @@ html, body {
 }
 
 /* ── Coin falls into well ──────────────────────────── */
-/* Units are the well overlay's SVG user units (see WishingWellSVG) */
-@keyframes coinFall {
-  0%   { transform: translateY(0) rotate(0deg) scale(1);   opacity: 1; }
-  80%  { opacity: 1; }
-  100% { transform: translateY(99px) rotate(540deg) scale(0.35); opacity: 0; }
-}
 
 /* ── Well ripple ───────────────────────────────────── */
 @keyframes wellRipple {
@@ -133,9 +127,32 @@ html, body {
   100% { opacity: 0; transform: translateX(260px); }
 }
 
+/* ── Voice rings and valley mist (cliff) ─────────── */
+@keyframes voiceRing {
+  0%   { transform: scale(0.4); opacity: 0; }
+  15%  { opacity: 0.45; }
+  100% { transform: scale(4.5) translateX(10px); opacity: 0; }
+}
+
+.cliff-mist {
+  background:
+    radial-gradient(ellipse 22% 38% at 12% 55%, rgba(150,165,210,0.22), transparent 70%),
+    radial-gradient(ellipse 18% 30% at 34% 40%, rgba(150,165,210,0.18), transparent 70%),
+    radial-gradient(ellipse 26% 42% at 58% 62%, rgba(150,165,210,0.2), transparent 70%),
+    radial-gradient(ellipse 20% 34% at 82% 45%, rgba(150,165,210,0.18), transparent 70%);
+  filter: blur(14px);
+  animation: mistDrift 60s ease-in-out infinite alternate;
+}
+
+@keyframes mistDrift {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-18%); }
+}
+
 /* ── Words fly away (cliff) ────────────────────────── */
 @keyframes wordsCarry {
-  0%   { opacity: 1; transform: translateX(0) translateY(0) scale(1); filter: blur(0); }
+  0%   { opacity: 0; transform: translateX(-20px) translateY(10px) scale(0.8); filter: blur(2px); }
+  12%  { opacity: 1; transform: translateX(40px) translateY(-6px) scale(1.05); filter: blur(0); }
   100% { opacity: 0; transform: translateX(900px) translateY(-160px) scale(0.35); filter: blur(4px); }
 }
 

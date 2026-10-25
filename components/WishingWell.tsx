@@ -29,6 +29,7 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
   const [loading,        setLoading]        = useState(false);
   const [soundOn,        setSoundOn]        = useState(false);
   const [showWishText,   setShowWishText]   = useState(true);
+  const [coinError,      setCoinError]      = useState(false);
 
   const wellRef  = useRef<WellHandle>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -67,7 +68,7 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
       const anonId = getAnonId();
       await postWish(wishText.trim(), anonId, token);
       setWishCount(c => c + 1);
-    } catch { /* silent — wish still completes visually */ }
+    } catch { /* silent: wish still completes visually */ }
 
     // Dissolve animation
     setShowWishText(false);
@@ -86,19 +87,22 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
   }
 
   async function handleCoinToss() {
-    if (!selectedCoin) return;
+    if (!selectedCoin || loading) return;
     setLoading(true);
+    setCoinError(false);
+    // The coin goes in straight away; checkout opens once it has landed
+    wellRef.current?.triggerCoinDrop();
+    mascotReact("happy", "✦");
+    if (soundOn && splashRef.current) setTimeout(() => splashRef.current?.play().catch(() => {}), 1600);
+    const landed = new Promise(r => setTimeout(r, 2400));
     try {
       const token  = getToken();
       const anonId = getAnonId();
-      const { checkout_url } = await createCoinCheckout(selectedCoin, anonId, token);
-      wellRef.current?.triggerCoinDrop();
-      if (soundOn && splashRef.current) splashRef.current.play().catch(() => {});
-      mascotReact("happy", "🪙!");
-      setTimeout(() => {
-        window.location.href = checkout_url;
-      }, 1000);
+      const [{ checkout_url }] = await Promise.all([createCoinCheckout(selectedCoin, anonId, token), landed]);
+      window.location.href = checkout_url;
     } catch {
+      await landed;
+      setCoinError(true);
       setLoading(false);
     }
   }
@@ -268,6 +272,11 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
               >
                 Toss it in →
               </button>
+              {coinError && (
+                <p className="text-xs text-center" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)", maxWidth: "280px", lineHeight: 1.6 }}>
+                  The coin is in the well, but the payment page couldn&apos;t open. Please try again in a moment.
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -288,7 +297,7 @@ export default function WishingWell({ initialWishCount }: { initialWishCount: nu
             "{quote.text}"
           </blockquote>
           <p className="text-xs tracking-widest uppercase" style={{ color: "var(--stone-light)", fontFamily: "var(--font-lato)" }}>
-            — {quote.author}
+            {quote.author}
           </p>
 
           <div style={{ width: "60px", height: "1px", background: "linear-gradient(90deg, transparent, var(--gold), transparent)" }} />

@@ -9,7 +9,7 @@ they can be tweaked and re-rendered rather than edited by hand.
 | `props.py`  | `coin.webp`, `moon.webp`, `nazar.webp`      | Home, Moon, Evil Eye       |
 | `sky.py`    | `sky.webp`                                  | StarField (every page)     |
 | `candle.py` | `candle-<colour>.webp`                      | The Flame                  |
-| `cliff.py`  | `cliff.webp`, `cliff-figure[-up].webp`      | The Cliff                  |
+| `cliff.py`  | `cliff.webp`, `cliff-figure.webp` (sprite sheet via `export-cliff-fig.sh`) | The Cliff |
 | `basin.py`  | `basin.webp`                                | Let Go                     |
 
 ## Rendering
@@ -27,6 +27,9 @@ Handy environment variables: `SAMPLES=32` and `PCT=40` for quick previews,
 `DRY_RUN=1` to only print overlay positions, `ONLY=...` to pick parts of a
 multi-render script. `art/preview.sh in.png out.png` composites a render onto
 the site background for review.
+
+The Let Go letter burn is not a render: it is drawn live on a canvas
+(components/BurningLetter.tsx).
 
 Overlays drawn in code (coin drop, ripples, candle flames, nazar cracks, the
 cliff's flying words, the basin swirl) line up with positions the scripts print
